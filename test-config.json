@@ -1,0 +1,45 @@
+{
+  "meta": {"version": "1.0.0"},
+  "env": {"MINIMAX_API_KEY": "test-key-123"},
+  "models": {
+    "providers": {
+      "minimax": {
+        "provider": "minimax",
+        "models": [
+          {
+            "id": "minimax-01",
+            "name": "MinMax Model 01",
+            "cost": {"input": 0.01, "output": 0.02},
+            "contextWindow": 100000,
+            "maxTokens": 32000,
+            "input": {"maxTokens": 32000},
+            "reasoning": {"type": "extended"}
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "skills": ["github", "web-search", "code-gen", "summarize"],
+      "model": {"primary": "minimax/minimax-01"}
+    }
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "dmPolicy": "open",
+      "botToken": "test-token",
+      "allowFrom": ["*"]
+    }
+  },
+  "plugins": {
+    "allow": ["github", "web-search"],
+    "entries": {
+      "github": {"enabled": true},
+      "web-search": {"enabled": true},
+      "code-gen": {"enabled": true},
+      "summarize": {"enabled": true}
+    }
+  }
+}

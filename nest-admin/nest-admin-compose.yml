@@ -1,0 +1,64 @@
+services:
+  nest-admin:
+    build: ./backend
+    container_name: nest-admin
+    image: nest-admin:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ../configs:/app/configs:rw
+      - ../docker-compose.yml:/app/compose/docker-compose.yml:ro
+    env_file:
+      - ../.env
+    environment:
+      - COMPOSE_DIR=/app/compose
+      - CONFIG_BASE_DIR=/app/configs/base
+      - CONFIG_INSTANCES_DIR=/app/configs/instances
+    restart: unless-stopped
+    networks:
+      - nest_openclaw-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  nest-admin-frontend:
+    image: nginx:alpine
+    container_name: nest-admin-frontend
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    restart: unless-stopped
+    depends_on:
+      - nest-admin
+    networks:
+      - nest_openclaw-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    ports:
+      - "18443:18443"
+    volumes:
+      - ../configs/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ../configs/nginx/ssl:/etc/nginx/ssl:ro
+    restart: unless-stopped
+    networks:
+      - nest_openclaw-net
+    healthcheck:
+      test: ["CMD", "curl", "-kf", "https://localhost:18443/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  nest_openclaw-net:
+    external: true

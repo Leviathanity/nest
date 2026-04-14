@@ -1,0 +1,155 @@
+{
+  "meta": {
+    "lastTouchedVersion": "2026.4.0",
+    "lastTouchedAt": "2026-04-13T08:58:25.897Z"
+  },
+  "env": {
+    "MINIMAX_API_KEY": "test-key-123"
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "minimax": {
+        "baseUrl": "https://api.minimaxi.com/anthropic",
+        "api": "anthropic-messages",
+        "authHeader": true,
+        "models": [
+          {
+            "id": "MiniMax-M2.7-highspeed",
+            "name": "M2.7 \u8d85\u901f\u7248",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 15,
+              "output": 60,
+              "cacheRead": 2,
+              "cacheWrite": 10
+            },
+            "contextWindow": 200000,
+            "maxTokens": 8192
+          },
+          {
+            "id": "MiniMax-M2.5-highspeed",
+            "name": "M2.5 \u8d85\u901f\u7248",
+            "reasoning": true,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0.3,
+              "output": 1.2,
+              "cacheRead": 0.03,
+              "cacheWrite": 0.12
+            },
+            "contextWindow": 200000,
+            "maxTokens": 8192
+          },
+          {
+            "id": "MiniMax-M2.5",
+            "name": "M2.5 \u6807\u51c6\u7248",
+            "reasoning": true,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0.3,
+              "output": 1.2,
+              "cacheRead": 0.03,
+              "cacheWrite": 0.12
+            },
+            "contextWindow": 200000,
+            "maxTokens": 8192
+          },
+          {
+            "id": "MiniMax-VL-01",
+            "name": "VL \u89c6\u89c9\u7248",
+            "reasoning": false,
+            "input": [
+              "text",
+              "image"
+            ],
+            "cost": {
+              "input": 0.3,
+              "output": 1.2,
+              "cacheRead": 0.03,
+              "cacheWrite": 0.12
+            },
+            "contextWindow": 200000,
+            "maxTokens": 8192
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "minimax/MiniMax-M2.7-highspeed"
+      },
+      "skills": [
+        "github",
+        "web-search",
+        "bash"
+      ],
+      "memorySearch": {
+        "enabled": true,
+        "provider": "openai",
+        "remote": {
+          "baseUrl": "http://host.docker.internal:5001/v1",
+          "apiKey": "${OPENCLAW_MEMORY_API_KEY}"
+        },
+        "model": "qwen3-embedding-0.6b"
+      },
+      "compaction": {
+        "mode": "safeguard"
+      },
+      "sandbox": {
+        "browser": {
+          "enabled": true,
+          "allowHostControl": true
+        }
+      }
+    }
+  },
+  "cluster": {
+    "instanceId": 1,
+    "instanceName": "bingbing",
+    "description": "Test instance"
+  },
+  "logging": {
+    "level": "info"
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "test-token",
+      "dmPolicy": "open",
+      "allowFrom": [
+        "*"
+      ],
+      "groupPolicy": "allowlist",
+      "streaming": "partial"
+    },
+    "feishu": {
+      "enabled": true,
+      "appId": "",
+      "appSecret": "",
+      "verificationToken": "",
+      "allowFrom": [
+        "*"
+      ]
+    },
+    "weixin": {
+      "enabled": true,
+      "corpId": "",
+      "agentId": "",
+      "corpSecret": ""
+    }
+  },
+  "plugins": {
+    "allow": [],
+    "entries": {}
+  }
+}

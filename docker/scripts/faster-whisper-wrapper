@@ -1,0 +1,14 @@
+#!/bin/bash
+exec python3 -c "
+import sys
+try:
+    from faster_whisper import WhisperModel
+    model = WhisperModel('large-v3-turbo', device='cuda', compute_type='float16')
+    def transcribe(audio):
+        segments, _ = model.transcribe(audio)
+        return ' '.join([s.text for s in segments])
+    print('Faster Whisper wrapper ready')
+except Exception as e:
+    print(f'Faster Whisper not available: {e}')
+    sys.exit(1)
+"

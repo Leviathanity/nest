@@ -1,0 +1,22 @@
+#==============================================================================
+# OpenClaw Cluster - Monitor Service Image
+#==============================================================================
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl \
+        docker.io \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY monitor/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY monitor /app/monitor
+
+ENV PYTHONUNBUFFERED=1
+ENV TZ=Asia/Shanghai
+
+CMD ["python", "-m", "monitor"]

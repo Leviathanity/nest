@@ -1,0 +1,39 @@
+{
+  "gateway": {
+    "bind": "0.0.0.0",
+    "port": 18789,
+    "allowUnconfigured": true
+  },
+  "plugins": {
+    "enabled": true,
+    "load": {
+      "paths": ["/root/.openclaw/extensions"]
+    }
+  },
+  "browser": {
+    "enabled": true,
+    "type": "chrome",
+    "headless": false,
+    "userDataDir": "/root/.openclaw/browser/chrome/user-data"
+  },
+  "credentials": {
+    "dir": "/root/.openclaw/credentials"
+  },
+  "identity": {
+    "dir": "/root/.openclaw/identity"
+  },
+  "whisper": {
+    "model": "large-v3-turbo",
+    "device": "cuda",
+    "cacheDir": "/root/.cache/huggingface/hub"
+  },
+  "autoglm": {
+    "enabled": true,
+    "adbHost": "localhost",
+    "adbPort": 5555
+  },
+  "logging": {
+    "level": "info",
+    "file": "/root/.openclaw/logs/openclaw.log"
+  }
+}

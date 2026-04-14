@@ -1,0 +1,53 @@
+name: nest-admin
+
+services:
+  nest-admin:
+    build:
+      context: ./est-admin/backend
+      dockerfile: Dockerfile
+    image: nest-admin:latest
+    container_name: nest-admin
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./configs:/app/configs:rw
+      - .:/app/compose:rw
+    environment:
+      - CONFIG_BASE_DIR=/app/configs/base
+      - CONFIG_INSTANCES_DIR=/app/configs/instances
+      - COMPOSE_DIR=/app/compose
+      - FLASK_ENV=production
+    ports:
+      - "8080:8080"
+    networks:
+      - nest-admin-net
+      - nest_openclaw-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  nest-admin-frontend:
+    image: nginx:alpine
+    container_name: nest-admin-frontend
+    volumes:
+      - ./est-admin/frontend:/usr/share/nginx/html:ro
+      - ./configs/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./configs/nginx/ssl:/etc/nginx/ssl:ro
+    ports:
+      - "18443:18443"
+    networks:
+      - nest-admin-net
+      - nest_openclaw-net
+    restart: unless-stopped
+    depends_on:
+      - nest-admin
+
+networks:
+  nest-admin-net:
+    name: nest_admin_net
+    driver: bridge
+  nest_openclaw-net:
+    external: true

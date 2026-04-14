@@ -1,0 +1,164 @@
+#==============================================================================
+# OpenClaw GPU Docker Image - Optimized Build File
+# Features: GPU acceleration (faster-whisper), Chrome, AutoGLM, BlueStacks
+#==============================================================================
+#
+# Build: docker build -t openclaw:full-gpu -f docker/Dockerfile.openclaw-gpu .
+#
+# Run:   docker run -d --name openclaw-gateway \
+#          --gpus all \
+#          -p 18789:18789 -p 18790:18790 -p 5555:5555 \
+#          -v "path/to/workspace:/root/.openclaw/workspace" \
+#          -v "path/to/openclaw.json:/root/.openclaw/openclaw.json" \
+#          --privileged \
+#          openclaw:full-gpu
+#
+#==============================================================================
+
+# Build arguments
+ARG GPU_BASE=
+
+#==============================================================================
+# Stage 1: Clone OpenClaw source code
+#==============================================================================
+FROM node:22-bookworm-slim AS clone
+
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+RUN git clone https://github.com/openclaw/openclaw.git /app && git checkout bad58873b7a3509f8c5cdddbcf6ea5d78693ebd8
+
+#==============================================================================
+# Stage 2: Build OpenClaw (core + UI)
+#==============================================================================
+FROM node:22-bookworm-slim AS builder
+
+RUN npm install -g pnpm
+COPY --from=clone /app /app
+RUN cd /app && pnpm install --frozen-lockfile && pnpm build && pnpm ui:build
+
+#==============================================================================
+# Stage 3: Final image with all dependencies
+#==============================================================================
+FROM ${GPU_BASE:-node:22-bookworm-slim} AS openclaw-gpu
+
+#-----------------------------------------------------------------------------
+# System dependencies - Combined for efficiency
+#-----------------------------------------------------------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl \
+        git \
+        wget \
+        gnupg2 \
+        ffmpeg \
+        python3-pip \
+        python3-venv \
+        python3-yaml \
+        android-tools-adb \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js if using CUDA base (doesn't have Node.js)
+RUN if [ ! -f /usr/local/bin/node ]; then \
+        curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+        apt-get install -y nodejs && \
+        rm -rf /var/lib/apt/lists*; \
+    fi
+
+#-----------------------------------------------------------------------------
+# Google Chrome for browser automation
+#-----------------------------------------------------------------------------
+RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - \
+    && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list \
+    && apt-get update \
+    && apt-get install -y google-chrome-stable \
+    && rm -rf /var/lib/apt/lists/*
+
+#-----------------------------------------------------------------------------
+# Python packages - GPU version
+#-----------------------------------------------------------------------------
+RUN pip install --no-cache-dir --break-system-packages \
+        playwright \
+        faster-whisper \
+        nvidia-cublas-cu12 \
+        nvidia-cudnn-cu12
+
+RUN python -m playwright install chromium --with-deps || true
+
+#-----------------------------------------------------------------------------
+# Copy built application
+#-----------------------------------------------------------------------------
+COPY --from=builder /app /app
+
+#-----------------------------------------------------------------------------
+# OpenClaw CLI installation
+#-----------------------------------------------------------------------------
+RUN mkdir -p /root \
+    && cd /app && npm install -g .
+
+#-----------------------------------------------------------------------------
+# Open-AutoGLM installation
+#-----------------------------------------------------------------------------
+RUN cd /root && \
+    git clone https://github.com/zai-org/Open-AutoGLM.git && \
+    cd Open-AutoGLM && \
+    python3 -m venv venv && \
+    ./venv/bin/pip install --break-system-packages --upgrade pip && \
+    ./venv/bin/pip install --break-system-packages -r requirements.txt && \
+    ./venv/bin/pip install --break-system-packages -e .
+
+# Download ADB Keyboard APK
+RUN cd /root/Open-AutoGLM/resources && \
+    curl -L -o ADBKeyboard.apk "https://raw.githubusercontent.com/senzhk/ADBKeyBoard/master/ADBKeyboard.apk"
+
+#-----------------------------------------------------------------------------
+# Directory structure
+#-----------------------------------------------------------------------------
+RUN mkdir -p /root/.openclaw/extensions \
+             /root/.openclaw/skills \
+             /root/.openclaw/browser/chrome/user-data \
+             /root/.openclaw/credentials \
+             /root/.openclaw/identity \
+             /root/.cache/huggingface/hub
+
+#-----------------------------------------------------------------------------
+# Extensions and configuration (bundled in image)
+#-----------------------------------------------------------------------------
+COPY docker/openclaw-default-gpu.json /root/.openclaw/openclaw.json
+COPY docker/extensions /root/.openclaw/extensions
+
+#-----------------------------------------------------------------------------
+# Faster Whisper model (large-v3-turbo) - GPU optimized
+#-----------------------------------------------------------------------------
+COPY cache/huggingface/hub/models--mobiuslabsgmbh--faster-whisper-large-v3-turbo \
+     /root/.cache/huggingface/hub/models--mobiuslabsgmbh--faster-whisper-large-v3-turbo
+
+# Create symlink
+RUN ln -sf /root/.cache/huggingface/hub/models--mobiuslabsgmbh--faster-whisper-large-v3-turbo \
+           /root/.cache/huggingface/hub/models--mobiuslabsgmbh--faster-whisper-large-v3-turbo
+
+#-----------------------------------------------------------------------------
+# Scripts
+#-----------------------------------------------------------------------------
+COPY docker/scripts/faster-whisper-wrapper /usr/local/bin/faster-whisper-wrapper
+COPY docker/scripts/start-browser.sh /usr/local/bin/start-browser.sh
+COPY docker/scripts/connect-bluestacks.sh /usr/local/bin/connect-bluestacks.sh
+
+RUN chmod +x /usr/local/bin/faster-whisper-wrapper \
+             /usr/local/bin/start-browser.sh \
+             /usr/local/bin/connect-bluestacks.sh
+
+#-----------------------------------------------------------------------------
+# Configuration
+#-----------------------------------------------------------------------------
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# GPU environment variables
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# Runtime configuration
+USER root
+WORKDIR /app
+
+EXPOSE 18789 18790 5555
+
+CMD ["node", "/app/openclaw.mjs", "gateway", "--bind", "0.0.0.0", "--port", "18789", "--allow-unconfigured"]

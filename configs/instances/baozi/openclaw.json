@@ -1,0 +1,98 @@
+{
+  "logging": {
+    "level": "info"
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "minimax": {
+        "baseUrl": "https://api.minimaxi.com/anthropic",
+        "api": "anthropic-messages",
+        "authHeader": true,
+        "models": [
+          {
+            "id": "MiniMax-M2.7-highspeed",
+            "name": "M2.7 \u8d85\u901f\u7248",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 15,
+              "output": 60,
+              "cacheRead": 2,
+              "cacheWrite": 10
+            },
+            "contextWindow": 200000,
+            "maxTokens": 8192
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "minimax/MiniMax-M2.7-highspeed"
+      },
+      "compaction": {
+        "mode": "safeguard"
+      },
+      "sandbox": {
+        "browser": {
+          "enabled": true,
+          "allowHostControl": true
+        }
+      }
+    }
+  },
+  "gateway": {
+    "mode": "local",
+    "bind": "lan",
+    "trustedProxies": [
+      "172.28.0.0/16",
+      "127.0.0.0/8"
+    ],
+    "controlUi": {
+      "dangerouslyDisableDeviceAuth": true,
+      "allowInsecureAuth": true,
+      "allowedOrigins": [
+        "http://localhost:18789",
+        "http://127.0.0.1:18789",
+        "https://localhost:18443",
+        "https://192.168.2.118:18443"
+      ]
+    },
+    "auth": {
+      "mode": "token",
+      "token": "402330c85c91010cf14a8d86ddbe2fbd"
+    }
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "",
+      "dmPolicy": "open",
+      "allowFrom": [
+        "*"
+      ],
+      "groupPolicy": "allowlist",
+      "streaming": {
+        "mode": "partial"
+      }
+    },
+    "feishu": {
+      "enabled": true,
+      "appId": "",
+      "appSecret": "",
+      "verificationToken": "",
+      "allowFrom": [
+        "*"
+      ]
+    }
+  },
+  "plugins": {
+    "allow": [],
+    "entries": {}
+  }
+}

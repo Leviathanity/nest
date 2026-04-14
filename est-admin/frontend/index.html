@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nest 管理面板</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 28px;
+            margin-bottom: 20px;
+            color: #00d4ff;
+        }
+        h2 {
+            font-size: 20px;
+            margin: 20px 0 10px;
+            color: #00d4ff;
+        }
+        .card {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        .btn-primary {
+            background: #00d4ff;
+            color: #1a1a2e;
+        }
+        .btn-primary:hover {
+            background: #00b8e6;
+        }
+        .btn-success {
+            background: #00c853;
+            color: #fff;
+        }
+        .btn-success:hover {
+            background: #00a844;
+        }
+        .btn-danger {
+            background: #ff5252;
+            color: #fff;
+        }
+        .btn-danger:hover {
+            background: #e04848;
+        }
+        .btn-warning {
+            background: #ff9800;
+            color: #fff;
+        }
+        .btn-warning:hover {
+            background: #e08800;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .instance-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 15px;
+        }
+        .instance-card {
+            background: #0f3460;
+            border-radius: 6px;
+            padding: 15px;
+            border-left: 4px solid #00d4ff;
+        }
+        .instance-card.stopped {
+            border-left-color: #ff5252;
+        }
+        .instance-card.running {
+            border-left-color: #00c853;
+        }
+        .instance-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .instance-name {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .status-healthy, .status-running {
+            background: #00c853;
+            color: #fff;
+        }
+        .status-stopped {
+            background: #ff5252;
+            color: #fff;
+        }
+        .instance-info {
+            font-size: 13px;
+            color: #aaa;
+            margin-bottom: 10px;
+        }
+        .instance-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .instance-actions .btn {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #333;
+            border-radius: 4px;
+            background: #0f3460;
+            color: #eee;
+            font-size: 14px;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 25px;
+            min-width: 400px;
+            max-width: 600px;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        .modal-header h3 {
+            color: #00d4ff;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            color: #aaa;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        .close-btn:hover {
+            color: #fff;
+        }
+        .config-editor {
+            width: 100%;
+            min-height: 300px;
+            padding: 10px;
+            border: 1px solid #333;
+            border-radius: 4px;
+            background: #0f3460;
+            color: #eee;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+            resize: vertical;
+        }
+        .logs-container {
+            background: #0a0a1a;
+            border-radius: 4px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .webhook-config {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .webhook-config input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #333;
+            border-radius: 4px;
+            background: #0f3460;
+            color: #eee;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #00d4ff;
+        }
+        .error {
+            color: #ff5252;
+            padding: 10px;
+            border-radius: 4px;
+            background: rgba(255,82,82,0.1);
+            margin-bottom: 10px;
+        }
+        .success {
+            color: #00c853;
+            padding: 10px;
+            border-radius: 4px;
+            background: rgba(0,200,83,0.1);
+            margin-bottom: 10px;
+        }
+        .tab-container {
+            margin-bottom: 20px;
+        }
+        .tabs {
+            display: flex;
+            gap: 5px;
+            border-bottom: 1px solid #333;
+            margin-bottom: 15px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .tab.active {
+            color: #00d4ff;
+            border-bottom: 2px solid #00d4ff;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🐛 Nest 管理面板</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="showAddInstanceModal()">+ 添加实例</button>
+                <button class="btn btn-success" onclick="startStack()">▶ 启动集群</button>
+                <button class="btn btn-danger" onclick="stopStack()">■ 停止集群</button>
+                <button class="btn btn-primary" onclick="refreshAll()">↻ 刷新</button>
+            </div>
+        </div>
+
+        <div id="message"></div>
+
+        <div class="card">
+            <h2>实例列表</h2>
+            <div class="tab-container">
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('instances')">全部实例</button>
+                    <button class="tab" onclick="switchTab('config')">基础配置</button>
+                    <button class="tab" onclick="switchTab('logs')">日志</button>
+                    <button class="tab" onclick="switchTab('webhook')">Webhook</button>
+                </div>
+                
+                <div id="tab-instances" class="tab-content active">
+                    <div id="instances-list" class="instance-grid">
+                        <div class="loading">正在加载实例...</div>
+                    </div>
+                </div>
+
+                <div id="tab-config" class="tab-content">
+                    <div class="form-group">
+                        <label>基础配置 (JSON)</label>
+                        <textarea id="base-config-editor" class="config-editor"></textarea>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveBaseConfig()">保存基础配置</button>
+                    <button class="btn btn-success" onclick="loadBaseConfig()">加载基础配置</button>
+                </div>
+
+                <div id="tab-logs" class="tab-content">
+                    <div class="form-group">
+                        <label>选择实例查看日志</label>
+                        <select id="log-instance" style="width:100%;padding:10px;background:#0f3460;color:#eee;border:1px solid #333;border-radius:4px;">
+<option value="">全部实例</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="loadLogs()">加载日志</button>
+                    <div id="logs-container" class="logs-container" style="margin-top:15px;">未加载日志</div>
+                </div>
+
+                <div id="tab-webhook" class="tab-content">
+                    <div class="card" style="background:#0f3460;">
+                        <div class="form-group">
+                            <label>Webhook 地址</label>
+                            <div class="webhook-config">
+                                <input type="text" id="webhook-url" placeholder="https://your-webhook-endpoint.com/notify">
+                                <button class="btn btn-primary" onclick="saveWebhook()">保存</button>
+                            </div>
+                        </div>
+                        <p style="font-size:12px;color:#aaa;margin-top:10px;">
+                            配置 Webhook URL 以接收实例状态变更通知。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="add-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加新实例</h3>
+                <button class="close-btn" onclick="closeModal('add-modal')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label>实例名称</label>
+                <input type="text" id="new-instance-name" placeholder="例如：openclaw-4">
+            </div>
+            <button class="btn btn-primary" onclick="addInstance()">创建实例</button>
+        </div>
+    </div>
+
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="edit-modal-title">编辑实例配置</h3>
+                <button class="close-btn" onclick="closeModal('edit-modal')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label>配置 (JSON)</label>
+                <textarea id="instance-config-editor" class="config-editor"></textarea>
+            </div>
+            <button class="btn btn-primary" onclick="saveInstanceConfig()">保存配置</button>
+            <button class="btn" style="background:#666;color:#fff;" onclick="closeModal('edit-modal')">取消</button>
+        </div>
+    </div>
+
+    <div id="logs-modal" class="modal">
+        <div class="modal-content" style="min-width:800px;">
+            <div class="modal-header">
+                <h3 id="logs-modal-title">实例日志</h3>
+                <button class="close-btn" onclick="closeModal('logs-modal')">&times;</button>
+            </div>
+            <div class="logs-container" id="modal-logs" style="max-height:500px;">Loading logs...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+        let currentEditInstance = null;
+        let instances = [];
+
+        async function api(endpoint, options = {}) {
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`, options);
+                if (!response.ok) {
+                    const error = await response.text();
+                    throw new Error(error || response.statusText);
+                }
+                return await response.json();
+            } catch (error) {
+                showMessage(error.message, 'error');
+                throw error;
+            }
+        }
+
+        function showMessage(text, type = 'error') {
+            const msg = document.getElementById('message');
+            msg.className = type;
+            msg.textContent = text;
+            msg.style.display = 'block';
+            setTimeout(() => msg.style.display = 'none', 5000);
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector(`.tab[onclick="switchTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        function getStatusClass(status) {
+            if (status === 'running') return 'running';
+            if (status === 'stopped' || status === 'exited') return 'stopped';
+            return '';
+        }
+
+        function getStatusBadge(status) {
+            if (status === 'running') return '<span class="status-badge status-running">运行中</span>';
+            if (status === 'stopped' || status === 'exited') return '<span class="status-badge status-stopped">已停止</span>';
+            return `<span class="status-badge">${status}</span>`;
+        }
+
+        async function refreshAll() {
+            await loadInstances();
+            await loadBaseConfig();
+        }
+
+        async function loadInstances() {
+            try {
+                instances = await api('/api/instances');
+                const container = document.getElementById('instances-list');
+                const logSelect = document.getElementById('log-instance');
+                
+                if (!instances.length) {
+                    container.innerHTML = '<p style="color:#aaa;padding:20px;">未找到实例</p>';
+                    return;
+                }
+
+                container.innerHTML = instances.map(inst => `
+                    <div class="instance-card ${getStatusClass(inst.status)}">
+                        <div class="instance-header">
+                            <span class="instance-name">${inst.name}</span>
+                            ${getStatusBadge(inst.status)}
+                        </div>
+                        <div class="instance-info">
+                            <div>镜像: ${inst.image}</div>
+                            <div>创建时间: ${inst.created || 'N/A'}</div>
+                        </div>
+                        <div class="instance-actions">
+                            <button class="btn btn-success" onclick="startInstance('${inst.name}')" ${inst.status === 'running' ? 'disabled' : ''}>启动</button>
+                            <button class="btn btn-warning" onclick="stopInstance('${inst.name}')" ${inst.status !== 'running' ? 'disabled' : ''}>停止</button>
+                            <button class="btn btn-primary" onclick="restartInstance('${inst.name}')">重启</button>
+                            <button class="btn" style="background:#666;color:#fff;" onclick="editInstance('${inst.name}')">编辑配置</button>
+                            <button class="btn" style="background:#555;color:#fff;" onclick="viewLogs('${inst.name}')">日志</button>
+                            <button class="btn" style="background:#9c27b0;color:#fff;" onclick="openConsole('${inst.name}', '${inst.config?.gateway?.auth?.token || ''}')" ${inst.status !== 'running' ? 'disabled' : ''}>控制台</button>
+                            <button class="btn btn-danger" onclick="deleteInstance('${inst.name}')">删除</button>
+                        </div>
+                    </div>
+                `).join('');
+
+                logSelect.innerHTML = '<option value="">All Instances</option>' + 
+                    instances.map(inst => `<option value="${inst.name}">${inst.name}</option>`).join('');
+            } catch (error) {
+                document.getElementById('instances-list').innerHTML = 
+                    `<div class="error">Failed to load instances: ${error.message}</div>`;
+            }
+        }
+
+        async function startInstance(name) {
+            await api(`/api/instances/${name}/start`, { method: 'POST' });
+            showMessage(`${name} 已启动`, 'success');
+            await loadInstances();
+        }
+
+        async function stopInstance(name) {
+            await api(`/api/instances/${name}/stop`, { method: 'POST' });
+            showMessage(`${name} 已停止`, 'success');
+            await loadInstances();
+        }
+
+        async function restartInstance(name) {
+            await api(`/api/instances/${name}/restart`, { method: 'POST' });
+            showMessage(`${name} 重启中`, 'success');
+            await loadInstances();
+        }
+
+        function openConsole(name, token) {
+            if (!token) {
+                showMessage('无法打开控制台：未找到令牌', 'error');
+                return;
+            }
+            window.open(`/instance/${name}/__openclaw__/dashboard/chat?token=${token}`, '_blank');
+        }
+
+        async function deleteInstance(name) {
+            if (!confirm(`确定要删除实例 ${name} 吗？`)) return;
+            await api(`/api/instances/${name}`, { method: 'DELETE' });
+            showMessage(`${name} 已删除`, 'success');
+            await loadInstances();
+        }
+
+        function showAddInstanceModal() {
+            document.getElementById('new-instance-name').value = '';
+            document.getElementById('add-modal').classList.add('active');
+        }
+
+        async function addInstance() {
+            const name = document.getElementById('new-instance-name').value.trim();
+            if (!name) {
+                showMessage('实例名称不能为空', 'error');
+                return;
+            }
+            try {
+                await api('/api/instances', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                showMessage(`${name} 已创建`, 'success');
+                closeModal('add-modal');
+                await loadInstances();
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        async function editInstance(name) {
+            currentEditInstance = name;
+            try {
+                const config = await api(`/api/config/${name}`);
+                document.getElementById('instance-config-editor').value = JSON.stringify(config, null, 2);
+                document.getElementById('edit-modal-title').textContent = `编辑 ${name} 配置`;
+                document.getElementById('edit-modal').classList.add('active');
+            } catch (error) {
+                showMessage(`加载配置失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function saveInstanceConfig() {
+            if (!currentEditInstance) return;
+            const configText = document.getElementById('instance-config-editor').value;
+            try {
+                const config = JSON.parse(configText);
+                await api(`/api/config/${currentEditInstance}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                showMessage('配置已保存', 'success');
+                closeModal('edit-modal');
+                await loadInstances();
+            } catch (error) {
+                if (error instanceof SyntaxError) {
+                    showMessage('JSON 格式无效', 'error');
+                } else {
+                    showMessage(error.message, 'error');
+                }
+            }
+        }
+
+        async function loadLogs() {
+            const instance = document.getElementById('log-instance').value;
+            const container = document.getElementById('logs-container');
+            container.textContent = '加载中...';
+            try {
+                if (instance) {
+                    const data = await api(`/api/instances/${instance}/logs?tail=200`);
+                    container.textContent = data.logs || '无日志';
+                } else {
+                    const allLogs = [];
+                    for (const inst of instances) {
+                        try {
+                            const data = await api(`/api/instances/${inst.name}/logs?tail=50`);
+                            allLogs.push(`=== ${inst.name} ===\n${data.logs || '无日志'}`);
+                        } catch (e) {
+                            allLogs.push(`=== ${inst.name} ===\nError: ${e.message}`);
+                        }
+                    }
+                    container.textContent = allLogs.join('\n\n');
+                }
+            } catch (error) {
+                container.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function viewLogs(name) {
+            document.getElementById('logs-modal-title').textContent = `${name} 日志`;
+            document.getElementById('modal-logs').textContent = '加载中...';
+            document.getElementById('logs-modal').classList.add('active');
+            try {
+                const data = await api(`/api/instances/${name}/logs?tail=500`);
+                document.getElementById('modal-logs').textContent = data.logs || 'No logs available';
+            } catch (error) {
+                document.getElementById('modal-logs').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function loadBaseConfig() {
+            try {
+                const config = await api('/api/base-config');
+                document.getElementById('base-config-editor').value = JSON.stringify(config, null, 2);
+            } catch (error) {
+                document.getElementById('base-config-editor').value = '{}';
+            }
+        }
+
+        async function saveBaseConfig() {
+            const configText = document.getElementById('base-config-editor').value;
+            try {
+                const config = JSON.parse(configText);
+                await api('/api/config/base', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                showMessage('基础配置已保存', 'success');
+            } catch (error) {
+                if (error instanceof SyntaxError) {
+                    showMessage('JSON 格式无效', 'error');
+                } else {
+                    showMessage(error.message, 'error');
+                }
+            }
+        }
+
+        function saveWebhook() {
+            const url = document.getElementById('webhook-url').value.trim();
+            localStorage.setItem('nest_admin_webhook_url', url);
+            showMessage('Webhook 地址已保存', 'success');
+        }
+
+        async function startStack() {
+            try {
+                await api('/api/stack/start', { method: 'POST' });
+                showMessage('集群启动请求已发送', 'success');
+                setTimeout(loadInstances, 2000);
+            } catch (error) {
+                showMessage(`启动集群失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function stopStack() {
+            try {
+                await api('/api/stack/stop', { method: 'POST' });
+                showMessage('集群停止请求已发送', 'success');
+                setTimeout(loadInstances, 2000);
+            } catch (error) {
+                showMessage(`停止集群失败: ${error.message}`, 'error');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedWebhook = localStorage.getItem('nest_admin_webhook_url');
+            if (savedWebhook) {
+                document.getElementById('webhook-url').value = savedWebhook;
+            }
+            refreshAll();
+        });
+    </script>
+</body>
+</html>
