@@ -894,6 +894,14 @@ async def update_preset_keys(data: dict):
     return {"status": "saved"}
 
 
+def sanitize_preset_id(preset_id: str) -> str:
+    """Sanitize preset ID to prevent path traversal"""
+    import re
+    if not re.match(r'^[a-zA-Z0-9_-]+$', preset_id):
+        raise HTTPException(400, "Invalid preset ID")
+    return preset_id
+
+
 @app.get("/api/presets/identities")
 async def list_identities():
     """获取身份模板列表"""
@@ -913,6 +921,7 @@ async def list_identities():
 @app.get("/api/presets/identities/{identity_id}")
 async def get_identity(identity_id: str):
     """获取身份模板详情"""
+    identity_id = sanitize_preset_id(identity_id)
     identity_dir = PRESETS_DIR / "identities" / identity_id
     if not identity_dir.exists():
         raise HTTPException(404, f"Identity {identity_id} not found")
@@ -950,6 +959,7 @@ async def list_skills():
 @app.get("/api/presets/skills/{skill_id}")
 async def get_skill(skill_id: str):
     """获取技能详情"""
+    skill_id = sanitize_preset_id(skill_id)
     skill_dir = PRESETS_DIR / "skills" / skill_id
     if not skill_dir.exists():
         raise HTTPException(404, f"Skill {skill_id} not found")
