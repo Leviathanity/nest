@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "keys": {
+    "minimax": {
+      "apiKey": "",
+      "label": "MiniMax 主账号"
+    },
+    "feishu": {
+      "appId": "",
+      "appSecret": "",
+      "verificationToken": "",
+      "label": "飞书应用"
+    },
+    "weixin": {
+      "enabled": true,
+      "label": "企业微信"
+    }
+  },
+  "defaultProvider": "minimax"
+}
