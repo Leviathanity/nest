@@ -894,6 +894,88 @@ async def update_preset_keys(data: dict):
     return {"status": "saved"}
 
 
+@app.get("/api/presets/identities")
+async def list_identities():
+    """获取身份模板列表"""
+    identities_dir = PRESETS_DIR / "identities"
+    if not identities_dir.exists():
+        return []
+    result = []
+    for d in identities_dir.iterdir():
+        if d.is_dir():
+            result.append({
+                "id": d.name,
+                "name": d.name.capitalize(),
+                "description": f"{d.name} identity template"
+            })
+    return result
+
+@app.get("/api/presets/identities/{identity_id}")
+async def get_identity(identity_id: str):
+    """获取身份模板详情"""
+    identity_dir = PRESETS_DIR / "identities" / identity_id
+    if not identity_dir.exists():
+        raise HTTPException(404, f"Identity {identity_id} not found")
+    files = {}
+    for fname in ["SOUL.md", "USER.md", "IDENTITY.md", "HEARTBEAT.md"]:
+        fpath = identity_dir / fname
+        if fpath.exists():
+            files[fname] = fpath.read_text(encoding="utf-8")
+    return {"id": identity_id, "files": files}
+
+@app.get("/api/presets/skills")
+async def list_skills():
+    """获取技能列表"""
+    skills_dir = PRESETS_DIR / "skills"
+    if not skills_dir.exists():
+        return []
+    result = []
+    for d in skills_dir.iterdir():
+        if d.is_dir():
+            skill_md = d / "SKILL.md"
+            description = ""
+            if skill_md.exists():
+                content = skill_md.read_text(encoding="utf-8")
+                for line in content.split("\n"):
+                    if line.startswith("description:"):
+                        description = line.replace("description:", "").strip()
+                        break
+            result.append({
+                "id": d.name,
+                "name": d.name,
+                "description": description or f"{d.name} skill"
+            })
+    return result
+
+@app.get("/api/presets/skills/{skill_id}")
+async def get_skill(skill_id: str):
+    """获取技能详情"""
+    skill_dir = PRESETS_DIR / "skills" / skill_id
+    if not skill_dir.exists():
+        raise HTTPException(404, f"Skill {skill_id} not found")
+    skill_md = skill_dir / "SKILL.md"
+    content = ""
+    if skill_md.exists():
+        content = skill_md.read_text(encoding="utf-8")
+    return {"id": skill_id, "content": content}
+
+@app.get("/api/presets/plugins")
+async def list_plugins():
+    """获取插件列表"""
+    plugins_dir = PRESETS_DIR / "plugins"
+    if not plugins_dir.exists():
+        return []
+    result = []
+    for d in plugins_dir.iterdir():
+        if d.is_dir():
+            result.append({
+                "id": d.name,
+                "name": d.name,
+                "description": f"{d.name} plugin"
+            })
+    return result
+
+
 @app.get("/api/instances/{name}/workspace/{filename}")
 async def get_instance_workspace_file(name: str, filename: str):
     workspace_dir = CONFIG_INSTANCES_DIR / name / "workspace"
