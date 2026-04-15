@@ -175,7 +175,10 @@
             <div class="card">
                 <div class="card-header">
                     <h2>实例管理</h2>
-                    <button class="primary" onclick="showAddModal()">添加实例</button>
+                    <div style="display:flex;gap:8px;">
+                        <button class="primary" onclick="showAddModal()">添加实例</button>
+                        <button onclick="showCreateModal()">创建实例</button>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div id="instances-list" class="instance-grid"></div>
@@ -228,6 +231,57 @@
             <div style="display:flex;gap:8px;justify-content:flex-end;">
                 <button onclick="closeModal('add')">取消</button>
                 <button class="primary" onclick="addInstance()">添加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Instance Modal -->
+    <div id="modal-create" class="modal">
+        <div class="modal-content" style="max-width:600px;">
+            <div class="modal-header">
+                <h3>创建新实例</h3>
+                <button class="modal-close" onclick="closeModal('create')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label>实例名称</label>
+                <input type="text" id="instance-name" placeholder="my-openclaw">
+            </div>
+            <div class="form-group">
+                <label>镜像</label>
+                <div>
+                    <label><input type="radio" name="image" value="openclaw" checked> OpenClaw</label>
+                    <label><input type="radio" name="image" value="openclaw-dev"> OpenClaw Dev</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>身份模板</label>
+                <select id="instance-identity">
+                    <option value="empty">空白</option>
+                    <option value="employee">员工助手</option>
+                    <option value="manager">管理者</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>预置技能</label>
+                <div id="skills-checkboxes"></div>
+            </div>
+            <div class="form-group">
+                <label>预置插件</label>
+                <div>
+                    <label><input type="checkbox" id="plugin-feishu"> 飞书</label>
+                    <label><input type="checkbox" id="plugin-weixin"> 企业微信 (二维码配对)</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>渠道配置</label>
+                <div>
+                    <label><input type="checkbox" id="channel-feishu"> 启用飞书</label>
+                    <label><input type="checkbox" id="channel-weixin"> 启用微信</label>
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button onclick="closeModal('create')">取消</button>
+                <button class="primary" onclick="createInstance()">创建</button>
             </div>
         </div>
     </div>
@@ -403,12 +457,24 @@
         
         async function loadPresets() {
             try {
-                presets.skills = await api('GET', '/api/presets/skills');
-                presets.plugins = await api('GET', '/api/presets/plugins');
-                presets.core_templates = await api('GET', '/api/presets/core-templates');
-                presets.model_providers = await api('GET', '/api/presets/model-providers');
-                presets.workspace_files = await api('GET', '/api/presets/workspace-files');
-                presets.channels = await api('GET', '/api/presets/channels');
+                const [identities, skills, plugins, keys, model_providers, core_templates, workspace_files, channels] = await Promise.all([
+                    api('GET', '/api/presets/identities'),
+                    api('GET', '/api/presets/skills'),
+                    api('GET', '/api/presets/plugins'),
+                    api('GET', '/api/presets/keys'),
+                    api('GET', '/api/presets/model-providers'),
+                    api('GET', '/api/presets/core-templates'),
+                    api('GET', '/api/presets/workspace-files'),
+                    api('GET', '/api/presets/channels')
+                ]);
+                presets.identities = identities;
+                presets.skills = skills;
+                presets.plugins = plugins;
+                presets.keys = keys;
+                presets.model_providers = model_providers;
+                presets.core_templates = core_templates;
+                presets.workspace_files = workspace_files;
+                presets.channels = channels;
             } catch (e) {
                 console.error('Failed to load presets:', e);
             }
@@ -575,6 +641,62 @@
                 await api('POST', '/api/instances', { name });
                 closeModal('add');
                 showAlert('success', `${name} 已添加`);
+                setTimeout(loadInstances, 1000);
+            } catch (e) { showAlert('error', e.message); }
+        }
+
+        function showCreateModal() {
+            document.getElementById('instance-name').value = '';
+            document.querySelectorAll('input[name="image"]')[0].checked = true;
+            document.getElementById('instance-identity').value = 'empty';
+            document.getElementById('plugin-feishu').checked = false;
+            document.getElementById('plugin-weixin').checked = false;
+            document.getElementById('channel-feishu').checked = false;
+            document.getElementById('channel-weixin').checked = false;
+            renderSkillsCheckboxesCreate();
+            document.getElementById('modal-create').classList.add('show');
+        }
+
+        function renderSkillsCheckboxesCreate() {
+            const container = document.getElementById('skills-checkboxes');
+            if (!presets.skills || !presets.skills.length) {
+                container.innerHTML = '<div style="color:#999;font-size:12px;">加载中...</div>';
+                return;
+            }
+            container.innerHTML = presets.skills.map(skill => `
+                <label style="display:flex;align-items:center;gap:8px;padding:4px 0;">
+                    <input type="checkbox" value="${skill.id}">
+                    <span>${skill.name}</span>
+                </label>
+            `).join('');
+        }
+
+        async function createInstance() {
+            const name = document.getElementById('instance-name').value.trim();
+            if (!name) { showAlert('error', '请输入实例名称'); return; }
+            const image = document.querySelector('input[name="image"]:checked').value;
+            const identity = document.getElementById('instance-identity').value;
+
+            const skills = [];
+            document.querySelectorAll('#skills-checkboxes input:checked').forEach(cb => {
+                skills.push(cb.value);
+            });
+
+            const plugins = [];
+            if (document.getElementById('plugin-feishu').checked) plugins.push('feishu');
+            if (document.getElementById('plugin-weixin').checked) plugins.push('openclaw-weixin');
+
+            const channels = {};
+            if (document.getElementById('channel-feishu').checked) channels.feishu = true;
+            if (document.getElementById('channel-weixin').checked) channels.weixin = true;
+
+            try {
+                await api('POST', '/api/instances', {
+                    name, image, identity, skills, plugins,
+                    modelProvider: 'minimax', channels
+                });
+                closeModal('create');
+                showAlert('success', `${name} 创建成功`);
                 setTimeout(loadInstances, 1000);
             } catch (e) { showAlert('error', e.message); }
         }
