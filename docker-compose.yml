@@ -16,6 +16,9 @@ volumes:
   openclaw-6-data: null
   openclaw-7-data: null
   openclaw-8-data: null
+  openclaw-9-data: null
+  openclaw-10-data: null
+  openclaw-11-data: null
 services:
   baozi:
     image: openclaw:pure-gpu
@@ -45,4 +48,33 @@ services:
     restart: unless-stopped
     labels:
     - openclaw.name=baozi
+    - openclaw.cluster=enabled
+  jiaozi:
+    image: openclaw:pure-cpu
+    container_name: jiaozi
+    networks:
+      openclaw-net:
+        ipv4_address: 172.28.0.10
+    volumes:
+    - openclaw-11-data:/root/.openclaw
+    - ./configs/base:/app/configs/base:ro
+    - ./configs/instances/jiaozi:/app/configs/instance:ro
+    ports:
+    - 18792:18789
+    - 18795:18790
+    - 5556:5555
+    environment:
+    - INSTANCE_NAME=jiaozi
+    - INSTANCE_ID=11
+    - NODE_ENV=production
+    - TZ=Asia/Shanghai
+    - MINIMAX_API_KEY=${MINIMAX_API_KEY}
+    - AUTOGLM_API_KEY=${MINIMAX_API_KEY}
+    - FEISHU_APP_ID=dummy
+    - FEISHU_APP_SECRET=dummy
+    - FEISHU_VERIFICATION_TOKEN=dummy
+    privileged: true
+    restart: unless-stopped
+    labels:
+    - openclaw.name=jiaozi
     - openclaw.cluster=enabled

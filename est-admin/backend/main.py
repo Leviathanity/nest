@@ -391,7 +391,13 @@ async def create_instance(data: dict):
         raise HTTPException(400, "name must be alphanumeric with dashes/underscores only")
     
     instance_type = data.get("instance_type", "compose")
-    image = data.get("image", "openclaw:pure-gpu")
+    gpu = data.get("gpu", True)
+    
+    # Determine image: explicit image takes precedence, otherwise use gpu flag
+    if ("image" in data and data["image"]):
+        image = data["image"]
+    else:
+        image = "openclaw:pure-gpu" if gpu else "openclaw:pure-cpu"
 
     instance_dir = CONFIG_INSTANCES_DIR / name
     instance_dir.mkdir(parents=True, exist_ok=True)
@@ -494,7 +500,8 @@ async def create_instance(data: dict):
         if returncode != 0:
             return {"name": name, "status": "created_with_errors", "compose_error": stderr}
         sync_config_to_container(name, clear_first=False)
-        return {"name": name, "status": "created", "ip": ip, "ports": {"http": http_port, "app": app_port, "data": data_port}}
+        subprocess.run(["docker", "restart", name], capture_output=True)
+        return {"name": name, "status": "created", "image": image, "ip": ip, "ports": {"http": http_port, "app": app_port, "data": data_port}}
     else:
         ip = get_next_ip()
         http_port, app_port, data_port = get_next_ports()
@@ -519,7 +526,8 @@ async def create_instance(data: dict):
             import time
             time.sleep(2)
             sync_config_to_container(name, clear_first=False)
-            return {"name": name, "status": "created", "ip": ip, "ports": {"http": http_port, "app": app_port, "data": data_port}}
+            subprocess.run(["docker", "restart", name], capture_output=True)
+            return {"name": name, "status": "created", "image": image, "ip": ip, "ports": {"http": http_port, "app": app_port, "data": data_port}}
         except Exception as e:
             return {"name": name, "status": "creation_failed", "error": str(e)}
 

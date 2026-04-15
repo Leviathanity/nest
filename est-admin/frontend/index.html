@@ -365,6 +365,13 @@
                 <label>实例名称</label>
                 <input type="text" id="new-instance-name" placeholder="例如：openclaw-4">
             </div>
+            <div class="form-group">
+                <label>镜像类型</label>
+                <select id="new-instance-gpu" style="width:100%;padding:10px;background:#0f3460;color:#eee;border:1px solid #333;border-radius:4px;">
+                    <option value="true">GPU (openclaw:pure-gpu)</option>
+                    <option value="false">CPU (openclaw:pure-cpu)</option>
+                </select>
+            </div>
             <button class="btn btn-primary" onclick="addInstance()">创建实例</button>
         </div>
     </div>
@@ -538,7 +545,7 @@
                 await api('/api/instances', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name })
+                    body: JSON.stringify({ name, gpu: document.getElementById("new-instance-gpu").value === "true" })
                 });
                 showMessage(`${name} 已创建`, 'success');
                 closeModal('add-modal');

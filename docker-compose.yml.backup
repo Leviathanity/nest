@@ -11,57 +11,14 @@ networks:
       config:
       - subnet: 172.28.0.0/16
 volumes:
-  openclaw-3-data: null
   openclaw-4-data: null
   openclaw-5-data: null
   openclaw-6-data: null
   openclaw-7-data: null
   openclaw-8-data: null
+  openclaw-9-data: null
+  openclaw-10-data: null
 services:
-  openclaw-3:
-    container_name: openclaw-3
-    image: openclaw:pure-gpu
-    networks:
-      openclaw-net:
-        ipv4_address: 172.28.0.12
-    ports:
-    - 18795:18789
-    - 18796:18790
-    - 5558:5555
-    volumes:
-    - openclaw-3-data:/root/.openclaw
-    - ./configs/base:/app/configs/base:ro
-    - ./configs/instances/openclaw-3:/app/configs/instance:ro
-    environment:
-    - INSTANCE_NAME=openclaw-3
-    - INSTANCE_ID=3
-    - NODE_ENV=production
-    - TZ=Asia/Shanghai
-    - MINIMAX_API_KEY=${MINIMAX_API_KEY}
-    - AUTOGLM_API_KEY=${MINIMAX_API_KEY}
-    - FEISHU_APP_ID=dummy
-    - FEISHU_APP_SECRET=dummy
-    - FEISHU_VERIFICATION_TOKEN=dummy
-    privileged: true
-    restart: unless-stopped
-    healthcheck:
-      test:
-      - CMD
-      - curl
-      - -f
-      - http://localhost:18789/health
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    labels:
-    - openclaw.name=openclaw-3
-    - openclaw.cluster=enabled
-    logging:
-      driver: json-file
-      options:
-        max-size: 50m
-        max-file: '3'
   baozi:
     image: openclaw:pure-gpu
     container_name: baozi
