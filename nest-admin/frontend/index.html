@@ -22,6 +22,13 @@
         .tab { padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; border: none; background: transparent; }
         .tab.active { background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .tab:hover:not(.active) { background: #e6e6e6; }
+
+        .tab-btn { padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; border: none; background: transparent; }
+        .tab-btn.active { background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .tab-btn:hover:not(.active) { background: #e6e6e6; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
         
         .instance-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
         
@@ -155,6 +162,7 @@
             <button class="tab active" data-tab="instances">实例列表</button>
             <button class="tab" data-tab="base-config">基础配置</button>
             <button class="tab" data-tab="settings">设置</button>
+            <button class="tab-btn" data-tab="keys">预制Keys</button>
         </div>
         
         <div id="tab-instances" class="tab-content">
@@ -212,6 +220,37 @@
                     </div>
                     <button class="primary" onclick="saveWebhook()">保存</button>
                     <button onclick="testWebhook()">测试</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-keys" class="tab-content" style="display:none;">
+            <div class="card">
+                <div class="card-header">
+                    <h2>预制 Keys 管理</h2>
+                </div>
+                <div class="card-body">
+                    <form id="keys-form">
+                        <div class="form-group">
+                            <label>MiniMax API Key</label>
+                            <input type="password" id="key-minimax-apikey" placeholder="sk-...">
+                        </div>
+                        <div class="form-group">
+                            <label>飞书 App ID</label>
+                            <input type="text" id="key-feishu-appid" placeholder="cli_...">
+                        </div>
+                        <div class="form-group">
+                            <label>飞书 App Secret</label>
+                            <input type="password" id="key-feishu-appsecret">
+                        </div>
+                        <div class="form-group">
+                            <label>默认 Provider</label>
+                            <select id="key-default-provider">
+                                <option value="minimax">MiniMax</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="primary">保存</button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -1157,6 +1196,48 @@
                 showAlert('error', `发送失败: ${e.message}`);
             }
         }
+
+        async function loadKeys() {
+            try {
+                const keys = await fetch('/api/presets/keys').then(r => r.json());
+                if (keys.keys) {
+                    if (keys.keys.minimax) {
+                        document.getElementById('key-minimax-apikey').value = keys.keys.minimax.apiKey || '';
+                    }
+                    if (keys.keys.feishu) {
+                        document.getElementById('key-feishu-appid').value = keys.keys.feishu.appId || '';
+                        document.getElementById('key-feishu-appsecret').value = keys.keys.feishu.appSecret || '';
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load keys:', e);
+            }
+        }
+
+        document.getElementById('keys-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await fetch('/api/presets/keys', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    version: 1,
+                    keys: {
+                        minimax: {
+                            apiKey: document.getElementById('key-minimax-apikey').value,
+                            label: "MiniMax 主账号"
+                        },
+                        feishu: {
+                            appId: document.getElementById('key-feishu-appid').value,
+                            appSecret: document.getElementById('key-feishu-appsecret').value,
+                            verificationToken: "",
+                            label: "飞书应用"
+                        }
+                    },
+                    defaultProvider: "minimax"
+                })
+            });
+            showAlert('success', '已保存');
+        });
         
         function closeModal(id) {
             document.getElementById(`modal-${id}`).classList.remove('show');
@@ -1183,6 +1264,16 @@
                 document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
                 document.getElementById(`tab-${tab.dataset.tab}`).style.display = 'block';
                 if (tab.dataset.tab === 'base-config') loadBaseConfig();
+            });
+        });
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+                if (btn.dataset.tab === 'keys') loadKeys();
             });
         });
         
