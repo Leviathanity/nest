@@ -540,6 +540,7 @@
         };
         let currentCreateTab = 'identity';
         let selectedModels = {};
+        let cachedInstances = [];
         
         async function api(method, path, body) {
             const opts = { method, headers: {} };
@@ -596,48 +597,93 @@
         }
         
         async function loadInstances() {
-            const list = document.getElementById('instances-list');
-            list.innerHTML = '<div class="loading">加载中...</div>';
             try {
                 const instances = await api('GET', '/api/instances');
+                const list = document.getElementById('instances-list');
+                
                 if (!instances.length) {
-                    list.innerHTML = '<div class="empty-state">暂无实例，点击"添加实例"创建</div>';
+                    if (list.children.length > 0) {
+                        list.innerHTML = '<div class="empty-state">暂无实例，点击"添加实例"创建</div>';
+                    }
+                    cachedInstances = [];
                     return;
                 }
-                list.innerHTML = instances.map(inst => {
-                    const enabledSkills = getEnabledSkills(inst.config);
-                    const isRunning = inst.status === 'running';
-                    const clusterName = inst.config?.cluster?.instanceName;
-                    const displayName = clusterName || inst.name;
-                    const instanceId = inst.config?.cluster?.instanceId || inst.instance_id || inst.name;
-                    const image = inst.image || (inst.config?.models?.providers ? 'OpenClaw' : 'unknown');
-                    const created = inst.created || (inst.config?.meta?.lastTouchedAt ? new Date(inst.config.meta.lastTouchedAt).toLocaleString('zh-CN') : '未知');
-                    return `
-                    <div class="instance-card">
-                        <div class="instance-header">
-                            <span class="instance-name">${displayName}</span>
-                            <span class="instance-status status-${isRunning ? 'healthy' : 'stopped'}">${isRunning ? 'running' : 'stopped'}</span>
-                        </div>
-                        <div class="instance-info">
-                            ${clusterName && clusterName !== inst.name ? `<div>容器: <span>${inst.name}</span></div>` : ''}
-                            <div>实例ID: <span>${instanceId}</span></div>
-                            <div>镜像: <span>${image}</span></div>
-                            <div>创建: <span>${created}</span></div>
-                            ${enabledSkills.length ? `<div>技能: ${enabledSkills.slice(0,3).map(s => `<span class="skill-tag">${s}</span>`).join('')}${enabledSkills.length > 3 ? '...' : ''}</div>` : ''}
-                        </div>
-                        <div class="instance-actions">
-                            ${!isRunning ? `<button class="primary" onclick="startInstance('${inst.name}')">启动</button>` : `<button onclick="stopInstance('${inst.name}')">停止</button>`}
-                            <button onclick="restartInstance('${inst.name}')" ${!isRunning ? 'disabled' : ''}>重启</button>
-                            <button onclick="openControlUi('${inst.name}')" ${!isRunning ? 'disabled' : ''}>控制台</button>
-                            <button onclick="showLogs('${inst.name}')">日志</button>
-                            <button onclick="showConfig('${inst.name}')">配置</button>
-                            <button class="danger" onclick="deleteInstance('${inst.name}')">删除</button>
-                        </div>
-                    </div>
-                `}).join('');
+                
+                const currentNames = new Set(cachedInstances.map(i => i.name));
+                const newNames = new Set(instances.map(i => i.name));
+                
+                const toAdd = instances.filter(i => !currentNames.has(i.name));
+                const toUpdate = instances.filter(i => currentNames.has(i.name));
+                const toRemove = cachedInstances.filter(i => !newNames.has(i.name));
+                
+                toRemove.forEach(inst => {
+                    const card = list.querySelector(`[data-instance="${inst.name}"]`);
+                    if (card) card.remove();
+                });
+                
+                toUpdate.forEach(inst => {
+                    const card = list.querySelector(`[data-instance="${inst.name}"]`);
+                    if (card) {
+                        const statusEl = card.querySelector('.instance-status');
+                        const isRunning = inst.status === 'running';
+                        statusEl.className = `instance-status status-${isRunning ? 'healthy' : 'stopped'}`;
+                        statusEl.textContent = isRunning ? 'running' : 'stopped';
+                        
+                        const actionsEl = card.querySelector('.instance-actions');
+                        actionsEl.innerHTML = getInstanceActionsHTML(inst);
+                    }
+                });
+                
+                if (toAdd.length > 0) {
+                    const addHTML = toAdd.map(inst => createInstanceCard(inst)).join('');
+                    list.insertAdjacentHTML('beforeend', addHTML);
+                }
+                
+                cachedInstances = instances;
             } catch (e) {
-                list.innerHTML = `<div class="empty-state" style="color:#ff4d4f;">加载失败: ${e.message}</div>`;
+                console.error('Failed to load instances:', e);
             }
+        }
+        
+        function getInstanceActionsHTML(inst) {
+            const isRunning = inst.status === 'running';
+            return `
+                ${!isRunning ? `<button class="primary" onclick="startInstance('${inst.name}')">启动</button>` : `<button onclick="stopInstance('${inst.name}')">停止</button>`}
+                <button onclick="restartInstance('${inst.name}')" ${!isRunning ? 'disabled' : ''}>重启</button>
+                <button onclick="openControlUi('${inst.name}')" ${!isRunning ? 'disabled' : ''}>控制台</button>
+                <button onclick="showLogs('${inst.name}')">日志</button>
+                <button onclick="showConfig('${inst.name}')">配置</button>
+                <button class="danger" onclick="deleteInstance('${inst.name}')">删除</button>
+            `;
+        }
+        
+        function createInstanceCard(inst) {
+            const enabledSkills = getEnabledSkills(inst.config);
+            const isRunning = inst.status === 'running';
+            const clusterName = inst.config?.cluster?.instanceName;
+            const displayName = clusterName || inst.name;
+            const instanceId = inst.config?.cluster?.instanceId || inst.instance_id || inst.name;
+            const image = inst.image || (inst.config?.models?.providers ? 'OpenClaw' : 'unknown');
+            const created = inst.created || (inst.config?.meta?.lastTouchedAt ? new Date(inst.config.meta.lastTouchedAt).toLocaleString('zh-CN') : '未知');
+            
+            return `
+            <div class="instance-card" data-instance="${inst.name}">
+                <div class="instance-header">
+                    <span class="instance-name">${escapeHtml(displayName)}</span>
+                    <span class="instance-status status-${isRunning ? 'healthy' : 'stopped'}">${isRunning ? 'running' : 'stopped'}</span>
+                </div>
+                <div class="instance-info">
+                    ${clusterName && clusterName !== inst.name ? `<div>容器: <span>${escapeHtml(inst.name)}</span></div>` : ''}
+                    <div>实例ID: <span>${escapeHtml(instanceId)}</span></div>
+                    <div>镜像: <span>${escapeHtml(image)}</span></div>
+                    <div>创建: <span>${escapeHtml(created)}</span></div>
+                    ${enabledSkills.length ? `<div>技能: ${enabledSkills.slice(0,3).map(s => `<span class="skill-tag">${escapeHtml(s)}</span>`).join('')}${enabledSkills.length > 3 ? '...' : ''}</div>` : ''}
+                </div>
+                <div class="instance-actions">
+                    ${getInstanceActionsHTML(inst)}
+                </div>
+            </div>
+            `;
         }
         
         function getEnabledSkills(config) {
