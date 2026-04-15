@@ -555,6 +555,13 @@
             return res.json();
         }
         
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
         async function loadPresets() {
             try {
                 const [identities, skills, plugins, keys, model_providers, core_templates, workspace_files, channels] = await Promise.all([
@@ -767,20 +774,6 @@
             document.getElementById('modal-create').classList.add('show');
         }
 
-        function renderSkillsCheckboxesCreate() {
-            const container = document.getElementById('skills-checkboxes');
-            if (!presets.skills || !presets.skills.length) {
-                container.innerHTML = '<div style="color:#999;font-size:12px;">加载中...</div>';
-                return;
-            }
-            container.innerHTML = presets.skills.map(skill => `
-                <label style="display:flex;align-items:center;gap:8px;padding:4px 0;">
-                    <input type="checkbox" value="${skill.id}">
-                    <span>${skill.name}</span>
-                </label>
-            `).join('');
-        }
-
         function renderIdentityCards() {
             const container = document.getElementById('identity-cards');
             const searchTerm = document.getElementById('create-search').value.toLowerCase();
@@ -801,9 +794,9 @@
                 <div class="preset-card ${isSelected ? 'selected' : ''}" onclick="toggleIdentitySelection('${id.id}')">
                     <div class="preset-card-header">
                         <input type="radio" class="preset-card-radio" name="identity" value="${id.id}" ${isSelected ? 'checked' : ''}>
-                        <span class="preset-card-name">${id.name}</span>
+                        <span class="preset-card-name">${escapeHtml(id.name)}</span>
                     </div>
-                    <div class="preset-card-desc">${id.description || '无描述'}</div>
+                    <div class="preset-card-desc">${escapeHtml(id.description) || '无描述'}</div>
                     <div class="preset-card-files"><strong>文件:</strong> ${files.join(', ')}</div>
                 </div>
             `}).join('');
@@ -828,9 +821,9 @@
                 <div class="preset-card ${isSelected ? 'selected' : ''}" onclick="toggleSkillSelection('${skill.id}')">
                     <div class="preset-card-header">
                         <input type="checkbox" class="preset-card-radio" ${isSelected ? 'checked' : ''}>
-                        <span class="preset-card-name">${skill.name}</span>
+                        <span class="preset-card-name">${escapeHtml(skill.name)}</span>
                     </div>
-                    <div class="preset-card-desc">${skill.description || '无描述'}</div>
+                    <div class="preset-card-desc">${escapeHtml(skill.description) || '无描述'}</div>
                     <div class="preset-card-files"><strong>文件:</strong> SKILL.md</div>
                 </div>
             `}).join('');
@@ -855,9 +848,9 @@
                 <div class="preset-card ${isSelected ? 'selected' : ''}" onclick="togglePluginSelection('${plugin.id}')">
                     <div class="preset-card-header">
                         <input type="checkbox" class="preset-card-radio" ${isSelected ? 'checked' : ''}>
-                        <span class="preset-card-name">${plugin.name}</span>
+                        <span class="preset-card-name">${escapeHtml(plugin.name)}</span>
                     </div>
-                    <div class="preset-card-desc">${plugin.description || '无描述'}</div>
+                    <div class="preset-card-desc">${escapeHtml(plugin.description) || '无描述'}</div>
                 </div>
             `}).join('');
         }
@@ -896,18 +889,18 @@
             const items = [];
             
             if (createSelections.identity) {
-                const id = presets.identities.find(i => i.id === createSelections.identity);
-                if (id) items.push(`<span class="selected-item">${id.name} <button onclick="event.stopPropagation();toggleIdentitySelection('${id.id}')">×</button></span>`);
+                const id = (presets.identities || []).find(i => i.id === createSelections.identity);
+                if (id) items.push(`<span class="selected-item">${escapeHtml(id.name)} <button onclick="event.stopPropagation();toggleIdentitySelection('${id.id}')">×</button></span>`);
             }
             
             createSelections.skills.forEach(sid => {
-                const skill = presets.skills.find(s => s.id === sid);
-                if (skill) items.push(`<span class="selected-item">${skill.name} <button onclick="event.stopPropagation();toggleSkillSelection('${sid}')">×</button></span>`);
+                const skill = (presets.skills || []).find(s => s.id === sid);
+                if (skill) items.push(`<span class="selected-item">${escapeHtml(skill.name)} <button onclick="event.stopPropagation();toggleSkillSelection('${sid}')">×</button></span>`);
             });
             
             createSelections.plugins.forEach(pid => {
-                const plugin = presets.plugins.find(p => p.id === pid);
-                if (plugin) items.push(`<span class="selected-item">${plugin.name} <button onclick="event.stopPropagation();togglePluginSelection('${pid}')">×</button></span>`);
+                const plugin = (presets.plugins || []).find(p => p.id === pid);
+                if (plugin) items.push(`<span class="selected-item">${escapeHtml(plugin.name)} <button onclick="event.stopPropagation();togglePluginSelection('${pid}')">×</button></span>`);
             });
             
             container.innerHTML = items.length ? items.join('') : '<span style="color:#999;font-size:12px;">未选择任何项目</span>';
