@@ -533,6 +533,12 @@
         let presets = { skills: [], plugins: [], core_templates: [], model_providers: [], workspace_files: [], channels: [] };
         let currentConfig = {};
         let currentWorkspaceFile = null;
+        let createSelections = {
+            identity: null,
+            skills: [],
+            plugins: []
+        };
+        let currentCreateTab = 'identity';
         let selectedModels = {};
         
         async function api(method, path, body) {
@@ -743,24 +749,21 @@
         function showCreateModal() {
             document.getElementById('instance-name').value = '';
             document.querySelectorAll('input[name="image"]')[0].checked = true;
-            document.getElementById('plugin-feishu').checked = false;
-            document.getElementById('plugin-weixin').checked = false;
-            document.getElementById('channel-feishu').checked = false;
-            document.getElementById('channel-weixin').checked = false;
-
-            const identitySelect = document.getElementById('instance-identity');
-            identitySelect.innerHTML = '<option value="empty">空白</option>';
-            if (presets.identities && presets.identities.length) {
-                presets.identities.forEach(id => {
-                    const opt = document.createElement('option');
-                    opt.value = id.id;
-                    opt.textContent = id.name;
-                    identitySelect.appendChild(opt);
-                });
-            }
-            identitySelect.value = 'empty';
-
-            renderSkillsCheckboxesCreate();
+            
+            createSelections = { identity: null, skills: [], plugins: [] };
+            currentCreateTab = 'identity';
+            
+            renderIdentityCards();
+            renderSkillsCards();
+            renderPluginsCards();
+            
+            document.querySelectorAll('.create-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector('.create-tab').classList.add('active');
+            document.querySelectorAll('.create-tab-panel').forEach(p => p.style.display = 'none');
+            document.getElementById('create-tab-identity').style.display = 'block';
+            
+            updateSelectedItemsDisplay();
+            
             document.getElementById('modal-create').classList.add('show');
         }
 
@@ -778,29 +781,169 @@
             `).join('');
         }
 
+        function renderIdentityCards() {
+            const container = document.getElementById('identity-cards');
+            const searchTerm = document.getElementById('create-search').value.toLowerCase();
+            const filtered = (presets.identities || []).filter(id => 
+                id.name.toLowerCase().includes(searchTerm) || 
+                (id.description || '').toLowerCase().includes(searchTerm)
+            );
+            
+            if (!filtered.length) {
+                container.innerHTML = '<div class="empty-state">暂无身份模板</div>';
+                return;
+            }
+            
+            container.innerHTML = filtered.map(id => {
+                const isSelected = createSelections.identity === id.id;
+                const files = ['SOUL.md', 'USER.md', 'IDENTITY.md', 'HEARTBEAT.md'];
+                return `
+                <div class="preset-card ${isSelected ? 'selected' : ''}" onclick="toggleIdentitySelection('${id.id}')">
+                    <div class="preset-card-header">
+                        <input type="radio" class="preset-card-radio" name="identity" value="${id.id}" ${isSelected ? 'checked' : ''}>
+                        <span class="preset-card-name">${id.name}</span>
+                    </div>
+                    <div class="preset-card-desc">${id.description || '无描述'}</div>
+                    <div class="preset-card-files"><strong>文件:</strong> ${files.join(', ')}</div>
+                </div>
+            `}).join('');
+        }
+
+        function renderSkillsCards() {
+            const container = document.getElementById('skills-cards');
+            const searchTerm = document.getElementById('create-search').value.toLowerCase();
+            const filtered = (presets.skills || []).filter(s => 
+                s.name.toLowerCase().includes(searchTerm) || 
+                (s.description || '').toLowerCase().includes(searchTerm)
+            );
+            
+            if (!filtered.length) {
+                container.innerHTML = '<div class="empty-state">暂无技能</div>';
+                return;
+            }
+            
+            container.innerHTML = filtered.map(skill => {
+                const isSelected = createSelections.skills.includes(skill.id);
+                return `
+                <div class="preset-card ${isSelected ? 'selected' : ''}" onclick="toggleSkillSelection('${skill.id}')">
+                    <div class="preset-card-header">
+                        <input type="checkbox" class="preset-card-radio" ${isSelected ? 'checked' : ''}>
+                        <span class="preset-card-name">${skill.name}</span>
+                    </div>
+                    <div class="preset-card-desc">${skill.description || '无描述'}</div>
+                    <div class="preset-card-files"><strong>文件:</strong> SKILL.md</div>
+                </div>
+            `}).join('');
+        }
+
+        function renderPluginsCards() {
+            const container = document.getElementById('plugins-cards');
+            const searchTerm = document.getElementById('create-search').value.toLowerCase();
+            const filtered = (presets.plugins || []).filter(p => 
+                p.name.toLowerCase().includes(searchTerm) || 
+                (p.description || '').toLowerCase().includes(searchTerm)
+            );
+            
+            if (!filtered.length) {
+                container.innerHTML = '<div class="empty-state">暂无插件</div>';
+                return;
+            }
+            
+            container.innerHTML = filtered.map(plugin => {
+                const isSelected = createSelections.plugins.includes(plugin.id);
+                return `
+                <div class="preset-card ${isSelected ? 'selected' : ''}" onclick="togglePluginSelection('${plugin.id}')">
+                    <div class="preset-card-header">
+                        <input type="checkbox" class="preset-card-radio" ${isSelected ? 'checked' : ''}>
+                        <span class="preset-card-name">${plugin.name}</span>
+                    </div>
+                    <div class="preset-card-desc">${plugin.description || '无描述'}</div>
+                </div>
+            `}).join('');
+        }
+
+        function toggleIdentitySelection(id) {
+            createSelections.identity = createSelections.identity === id ? null : id;
+            renderIdentityCards();
+            updateSelectedItemsDisplay();
+        }
+
+        function toggleSkillSelection(id) {
+            const idx = createSelections.skills.indexOf(id);
+            if (idx >= 0) {
+                createSelections.skills.splice(idx, 1);
+            } else {
+                createSelections.skills.push(id);
+            }
+            renderSkillsCards();
+            updateSelectedItemsDisplay();
+        }
+
+        function togglePluginSelection(id) {
+            const idx = createSelections.plugins.indexOf(id);
+            if (idx >= 0) {
+                createSelections.plugins.splice(idx, 1);
+            } else {
+                createSelections.plugins.push(id);
+            }
+            renderPluginsCards();
+            updateSelectedItemsDisplay();
+        }
+
+        function updateSelectedItemsDisplay() {
+            const container = document.getElementById('selected-items-list');
+            const countSpan = document.getElementById('selected-count');
+            const items = [];
+            
+            if (createSelections.identity) {
+                const id = presets.identities.find(i => i.id === createSelections.identity);
+                if (id) items.push(`<span class="selected-item">${id.name} <button onclick="event.stopPropagation();toggleIdentitySelection('${id.id}')">×</button></span>`);
+            }
+            
+            createSelections.skills.forEach(sid => {
+                const skill = presets.skills.find(s => s.id === sid);
+                if (skill) items.push(`<span class="selected-item">${skill.name} <button onclick="event.stopPropagation();toggleSkillSelection('${sid}')">×</button></span>`);
+            });
+            
+            createSelections.plugins.forEach(pid => {
+                const plugin = presets.plugins.find(p => p.id === pid);
+                if (plugin) items.push(`<span class="selected-item">${plugin.name} <button onclick="event.stopPropagation();togglePluginSelection('${pid}')">×</button></span>`);
+            });
+            
+            container.innerHTML = items.length ? items.join('') : '<span style="color:#999;font-size:12px;">未选择任何项目</span>';
+            countSpan.textContent = `已选: ${items.length}项`;
+        }
+
+        function clearCreateSelections() {
+            createSelections = { identity: null, skills: [], plugins: [] };
+            if (currentCreateTab === 'identity') renderIdentityCards();
+            else if (currentCreateTab === 'skills') renderSkillsCards();
+            else renderPluginsCards();
+            updateSelectedItemsDisplay();
+        }
+
+        function filterCreateItems() {
+            if (currentCreateTab === 'identity') renderIdentityCards();
+            else if (currentCreateTab === 'skills') renderSkillsCards();
+            else renderPluginsCards();
+        }
+
         async function createInstance() {
             const name = document.getElementById('instance-name').value.trim();
             if (!name) { showAlert('error', '请输入实例名称'); return; }
+            if (!createSelections.identity) { showAlert('error', '请选择身份模板'); return; }
+            
             const image = document.querySelector('input[name="image"]:checked').value;
-            const identity = document.getElementById('instance-identity').value;
-
-            const skills = [];
-            document.querySelectorAll('#skills-checkboxes input:checked').forEach(cb => {
-                skills.push(cb.value);
-            });
-
-            const plugins = [];
-            if (document.getElementById('plugin-feishu').checked) plugins.push('feishu');
-            if (document.getElementById('plugin-weixin').checked) plugins.push('openclaw-weixin');
-
-            const channels = {};
-            if (document.getElementById('channel-feishu').checked) channels.feishu = true;
-            if (document.getElementById('channel-weixin').checked) channels.weixin = true;
 
             try {
                 await api('POST', '/api/instances', {
-                    name, image, identity, skills, plugins,
-                    modelProvider: 'minimax', channels
+                    name,
+                    image,
+                    identity: createSelections.identity,
+                    skills: createSelections.skills,
+                    plugins: createSelections.plugins,
+                    modelProvider: 'minimax',
+                    channels: {}
                 });
                 closeModal('create');
                 showAlert('success', `${name} 创建成功`);
@@ -1337,6 +1480,21 @@
                 btn.classList.add('active');
                 document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
                 if (btn.dataset.tab === 'keys') loadKeys();
+            });
+        });
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.create-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabName = this.dataset.createTab;
+                    currentCreateTab = tabName;
+                    document.querySelectorAll('.create-tab').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    document.querySelectorAll('.create-tab-panel').forEach(p => p.style.display = 'none');
+                    document.getElementById('create-tab-' + tabName).style.display = 'block';
+                    document.getElementById('create-search').value = '';
+                    filterCreateItems();
+                });
             });
         });
         
