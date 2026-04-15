@@ -317,7 +317,8 @@ def build_instance_config(instance_id: int, name: str, token: str, data: Instanc
             "bind": "lan",
             "controlUi": {
                 "dangerouslyDisableDeviceAuth": True,
-                "allowInsecureAuth": True
+                "allowInsecureAuth": True,
+                "allowedOrigins": ["*"]
             },
             "auth": {
                 "mode": "token",
