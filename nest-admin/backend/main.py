@@ -1012,7 +1012,7 @@ async def update_preset_keys(data: dict):
         raise HTTPException(400, "Invalid data format")
     required_fields = ("version", "keys", "defaultProvider")
     if not all(field in data for field in required_fields):
-        return {"error": f"Missing required fields: {required_fields}"}, 400
+        raise HTTPException(400, f"Missing required fields: {required_fields}")
     save_preset_keys(data)
     return {"status": "saved"}
 
