@@ -257,8 +257,6 @@
                 <label>身份模板</label>
                 <select id="instance-identity">
                     <option value="empty">空白</option>
-                    <option value="employee">员工助手</option>
-                    <option value="manager">管理者</option>
                 </select>
             </div>
             <div class="form-group">
@@ -648,11 +646,23 @@
         function showCreateModal() {
             document.getElementById('instance-name').value = '';
             document.querySelectorAll('input[name="image"]')[0].checked = true;
-            document.getElementById('instance-identity').value = 'empty';
             document.getElementById('plugin-feishu').checked = false;
             document.getElementById('plugin-weixin').checked = false;
             document.getElementById('channel-feishu').checked = false;
             document.getElementById('channel-weixin').checked = false;
+
+            const identitySelect = document.getElementById('instance-identity');
+            identitySelect.innerHTML = '<option value="empty">空白</option>';
+            if (presets.identities && presets.identities.length) {
+                presets.identities.forEach(id => {
+                    const opt = document.createElement('option');
+                    opt.value = id.id;
+                    opt.textContent = id.name;
+                    identitySelect.appendChild(opt);
+                });
+            }
+            identitySelect.value = 'empty';
+
             renderSkillsCheckboxesCreate();
             document.getElementById('modal-create').classList.add('show');
         }
