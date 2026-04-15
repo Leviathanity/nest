@@ -1,10 +1,13 @@
 import json
+import logging
 import os
 import secrets
 import shutil
 import subprocess
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 import docker
 from docker.models.containers import Container
@@ -198,6 +201,7 @@ def apply_identity_to_instance(instance_dir: Path, identity_id: str):
     """应用身份模板到实例"""
     identity_dir = PRESETS_DIR / "identities" / identity_id
     if not identity_dir.exists():
+        logger.warning(f"Identity preset not found: {identity_id}")
         return
     workspace_dir = instance_dir / "workspace"
     workspace_dir.mkdir(parents=True, exist_ok=True)
@@ -213,12 +217,14 @@ def apply_skills_to_instance(instance_dir: Path, skill_ids: list):
     skills_dir.mkdir(parents=True, exist_ok=True)
     for skill_id in skill_ids:
         src_dir = PRESETS_DIR / "skills" / skill_id
-        if src_dir.exists():
-            dst_dir = skills_dir / skill_id
-            dst_dir.mkdir(parents=True, exist_ok=True)
-            for f in src_dir.iterdir():
-                if f.is_file():
-                    (dst_dir / f.name).write_text(f.read_text(encoding="utf-8"), encoding="utf-8")
+        if not src_dir.exists():
+            logger.warning(f"Skill preset not found: {skill_id}")
+            continue
+        dst_dir = skills_dir / skill_id
+        dst_dir.mkdir(parents=True, exist_ok=True)
+        for f in src_dir.iterdir():
+            if f.is_file():
+                (dst_dir / f.name).write_text(f.read_text(encoding="utf-8"), encoding="utf-8")
 
 def apply_plugins_to_instance(instance_dir: Path, plugin_ids: list, keys_data: dict):
     """应用插件到实例"""
@@ -228,12 +234,14 @@ def apply_plugins_to_instance(instance_dir: Path, plugin_ids: list, keys_data: d
     extensions_dir.mkdir(parents=True, exist_ok=True)
     for plugin_id in plugin_ids:
         src_dir = PRESETS_DIR / "plugins" / plugin_id
-        if src_dir.exists():
-            dst_dir = plugins_dir / plugin_id
-            dst_dir.mkdir(parents=True, exist_ok=True)
-            for f in src_dir.iterdir():
-                if f.is_file():
-                    (dst_dir / f.name).write_text(f.read_text(encoding="utf-8"), encoding="utf-8")
+        if not src_dir.exists():
+            logger.warning(f"Plugin preset not found: {plugin_id}")
+            continue
+        dst_dir = plugins_dir / plugin_id
+        dst_dir.mkdir(parents=True, exist_ok=True)
+        for f in src_dir.iterdir():
+            if f.is_file():
+                (dst_dir / f.name).write_text(f.read_text(encoding="utf-8"), encoding="utf-8")
 
 def get_next_instance_id() -> int:
     max_id = 0
@@ -330,7 +338,8 @@ def build_instance_config(instance_id: int, name: str, token: str, data: Instanc
     if model_provider in keys_data.get("keys", {}):
         provider_keys = keys_data["keys"][model_provider]
         if "apiKey" in provider_keys:
-            config["env"] = {"MINIMAX_API_KEY": provider_keys["apiKey"]}
+            env_var_name = f"{model_provider.upper()}_API_KEY"
+            config["env"] = {env_var_name: provider_keys["apiKey"]}
 
     if data.channels:
         config["channels"] = {}
@@ -362,7 +371,6 @@ def create_instance_directories(instance_dir: Path):
         "agents/main/agent",
         "workspace/skills",
         "workspace/memory",
-        "workspace",
         "skills",
         "extensions",
         "memory",
