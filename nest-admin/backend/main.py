@@ -153,12 +153,20 @@ async def get_instance(name: str):
 
 def load_preset_keys() -> dict:
     if PRESETS_KEYS_FILE.exists():
-        return json.loads(PRESETS_KEYS_FILE.read_text())
+        try:
+            return json.loads(PRESETS_KEYS_FILE.read_text())
+        except (json.JSONDecodeError, OSError):
+            return {"version": 1, "keys": {}, "defaultProvider": "minimax"}
     return {"version": 1, "keys": {}, "defaultProvider": "minimax"}
 
 def save_preset_keys(data: dict):
+    if not isinstance(data, dict) or "keys" not in data:
+        raise ValueError("Invalid data structure: expected dict with 'keys' field")
     PRESETS_DIR.mkdir(parents=True, exist_ok=True)
-    PRESETS_KEYS_FILE.write_text(json.dumps(data, indent=2))
+    try:
+        PRESETS_KEYS_FILE.write_text(json.dumps(data, indent=2))
+    except (OSError, IOError) as e:
+        raise IOError(f"Failed to write preset keys: {e}")
 
 def mask_key(key: str) -> str:
     if not key or len(key) < 8:
@@ -877,6 +885,11 @@ async def get_preset_keys():
 @app.put("/api/presets/keys")
 async def update_preset_keys(data: dict):
     """更新预制 Keys"""
+    if not isinstance(data, dict):
+        return {"error": "Invalid data format"}, 400
+    required_fields = ("version", "keys", "defaultProvider")
+    if not all(field in data for field in required_fields):
+        return {"error": f"Missing required fields: {required_fields}"}, 400
     save_preset_keys(data)
     return {"status": "saved"}
 
