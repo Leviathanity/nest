@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "keys": {
+    "minimax": {
+      "apiKey": "test-key-12345678",
+      "label": "Test"
+    },
+    "feishu": {
+      "appId": "cli_test123",
+      "appSecret": "secret123",
+      "verificationToken": "token123",
+      "label": "Feishu Test"
+    },
+    "weixin": {
+      "enabled": true,
+      "label": "Weixin"
+    }
+  },
+  "defaultProvider": "minimax"
+}

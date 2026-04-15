@@ -312,11 +312,6 @@ async def create_instance(data: InstanceCreateRequest):
 def build_instance_config(instance_id: int, name: str, token: str, data: InstanceCreateRequest, keys_data: dict) -> dict:
     """构建实例的 openclaw.json"""
     config = {
-        "cluster": {
-            "instanceId": instance_id,
-            "instanceName": name,
-            "description": f"Instance {name}"
-        },
         "gateway": {
             "mode": "local",
             "bind": "lan",
@@ -354,8 +349,6 @@ def build_instance_config(instance_id: int, name: str, token: str, data: Instanc
                     "dmPolicy": "open",
                     "allowFrom": ["*"]
                 }
-        if data.channels.get("weixin"):
-            config["channels"]["weixin"] = {"enabled": True}
 
     if data.plugins:
         config["plugins"] = {
@@ -474,9 +467,16 @@ async def start_instance(name: str):
                 ip = f"172.28.0.{i}"
                 if ip not in existing_ips:
                     break
-            
+
+            data_volume_name = f"nest_openclaw-{instance_id}-data"
+            try:
+                CLIENT.volumes.get(data_volume_name)
+            except docker.errors.NotFound:
+                CLIENT.volumes.create(data_volume_name)
+
+            image_name = config.get("image", "openclaw:pure-gpu")
             container = CLIENT.containers.run(
-                image="xeno911/openclaw:full-gpu",
+                image=image_name,
                 name=name,
                 detach=True,
                 ports={
@@ -485,6 +485,7 @@ async def start_instance(name: str):
                     "5555/tcp": available_ports[2],
                 },
                 volumes={
+                    data_volume_name: {"bind": "/root/.openclaw", "mode": "rw"},
                     "C:\\Users\\daemo\\workplace\\nest\\configs\\base": {"bind": "/app/configs/base", "mode": "ro"},
                     "C:\\Users\\daemo\\workplace\\nest\\configs\\instances\\" + name: {"bind": "/app/configs/instance", "mode": "ro"},
                 },
@@ -514,7 +515,7 @@ async def start_instance(name: str):
             )
             if copy_result.exit_code != 0:
                 raise HTTPException(500, f"Failed to copy instance config: {copy_result.output.decode()}")
-            
+
             network = CLIENT.networks.get("nest_openclaw-net")
             network.connect(container, ipv4_address=ip)
             
@@ -524,7 +525,18 @@ async def start_instance(name: str):
     
     if container.status == "running":
         return {"name": name, "status": "already running"}
+
     container.start()
+
+    import time
+    time.sleep(2)
+
+    copy_result = container.exec_run(
+        "sh -c 'cp /app/configs/instance/openclaw.json /root/.openclaw/openclaw.json'"
+    )
+    if copy_result.exit_code != 0:
+        raise HTTPException(500, f"Failed to copy instance config: {copy_result.output.decode()}")
+
     return {"name": name, "status": "started"}
 
 

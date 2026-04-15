@@ -286,10 +286,10 @@
                 <input type="text" id="instance-name" placeholder="my-openclaw">
             </div>
             <div class="form-group">
-                <label>镜像</label>
+                <label>镜像类型</label>
                 <div>
-                    <label><input type="radio" name="image" value="openclaw" checked> OpenClaw</label>
-                    <label><input type="radio" name="image" value="openclaw-dev"> OpenClaw Dev</label>
+                    <label><input type="radio" name="image" value="openclaw:pure-gpu" checked> GPU</label>
+                    <label><input type="radio" name="image" value="openclaw:pure-cpu"> CPU</label>
                 </div>
             </div>
             <div class="form-group">
@@ -473,6 +473,7 @@
     <script>
         const API_BASE = 'http://192.168.2.118:8080';
         let currentInstance = null;
+        let currentInstanceHttpPort = 18789;
         let presets = { skills: [], plugins: [], core_templates: [], model_providers: [], workspace_files: [], channels: [] };
         let currentConfig = {};
         let currentWorkspaceFile = null;
@@ -646,8 +647,9 @@
                 }
                 const token = inst.config?.gateway?.auth?.token || '';
                 const host = window.location.hostname;
-                const proxyPort = 18443;
-                let url = `https://${host}:${proxyPort}/instance/${name}/__openclaw__/dashboard/chat`;
+                const ports = inst.ports || {};
+                const httpPort = ports['18789/tcp']?.[0]?.HostPort || 18789;
+                let url = `http://${host}:${httpPort}/__openclaw__/dashboard/chat`;
                 if (token) {
                     url += `?token=${encodeURIComponent(token)}`;
                 }
@@ -753,19 +755,24 @@
         async function showConfig(name) {
             currentInstance = name;
             document.getElementById('config-title').textContent = `实例配置: ${name}`;
-            
+
             try {
-                const config = await api('GET', `/api/instances/${name}/full-config`);
+                const [inst, config] = await Promise.all([
+                    api('GET', `/api/instances/${name}`),
+                    api('GET', `/api/instances/${name}/full-config`)
+                ]);
                 currentConfig = config || {};
-                
+
                 document.getElementById('cfg-instance-id').value = currentConfig.cluster?.instanceId || 1;
                 document.getElementById('cfg-instance-name').value = currentConfig.cluster?.instanceName || name;
                 document.getElementById('cfg-description').value = currentConfig.cluster?.description || '';
                 document.getElementById('cfg-log-level').value = currentConfig.logging?.level || 'info';
-                
+
                 const token = currentConfig.gateway?.auth?.token || '';
                 document.getElementById('cfg-gateway-token').value = token;
-                document.getElementById('cfg-console-url').textContent = `https://${window.location.hostname}:18443/instance/${name}/__openclaw__/dashboard/chat?token=${token}`;
+                const ports = inst.ports || {};
+                currentInstanceHttpPort = ports['18789/tcp']?.[0]?.HostPort || 18789;
+                document.getElementById('cfg-console-url').textContent = `http://${window.location.hostname}:${currentInstanceHttpPort}/__openclaw__/dashboard/chat?token=${token}`;
                 
                 const disableDeviceAuth = currentConfig.gateway?.controlUi?.dangerouslyDisableDeviceAuth || false;
                 document.getElementById('cfg-disable-device-auth').checked = disableDeviceAuth;
@@ -827,7 +834,7 @@
             if (!confirm('确定要重新生成访问令牌吗？重新生成后需要更新所有使用旧令牌的客户端。')) return;
             const newToken = Array.from({length: 32}, () => Math.floor(Math.random() * 16).toString(16)).join('');
             document.getElementById('cfg-gateway-token').value = newToken;
-            document.getElementById('cfg-console-url').textContent = `https://${window.location.hostname}:18443/instance/${currentInstance}/__openclaw__/dashboard/chat?token=${newToken}`;
+            document.getElementById('cfg-console-url').textContent = `http://${window.location.hostname}:${currentInstanceHttpPort}/__openclaw__/dashboard/chat?token=${newToken}`;
             showAlert('success', 'Token 已重新生成，请在保存配置后重启实例');
         }
         

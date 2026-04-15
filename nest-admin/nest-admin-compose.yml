@@ -8,6 +8,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ../configs:/app/configs:rw
+      - ../presets:/app/configs/presets:rw
       - ../docker-compose.yml:/app/compose/docker-compose.yml:ro
     env_file:
       - ../.env
@@ -38,23 +39,6 @@ services:
       - nest_openclaw-net
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  nginx-proxy:
-    image: nginx:alpine
-    container_name: nginx-proxy
-    ports:
-      - "18443:18443"
-    volumes:
-      - ../configs/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ../configs/nginx/ssl:/etc/nginx/ssl:ro
-    restart: unless-stopped
-    networks:
-      - nest_openclaw-net
-    healthcheck:
-      test: ["CMD", "curl", "-kf", "https://localhost:18443/"]
       interval: 30s
       timeout: 10s
       retries: 3
