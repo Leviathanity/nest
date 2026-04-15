@@ -40,6 +40,16 @@ class InstanceConfig(BaseModel):
     cluster: Optional[dict] = None
 
 
+class InstanceCreateRequest(BaseModel):
+    name: str
+    image: Optional[str] = "openclaw:pure-gpu"
+    identity: Optional[str] = "empty"
+    skills: Optional[list[str]] = []
+    plugins: Optional[list[str]] = []
+    modelProvider: Optional[str] = "minimax"
+    channels: Optional[dict] = {}
+
+
 def get_nest_containers() -> list[dict]:
     try:
         compose_containers = CLIENT.containers.list(
@@ -173,6 +183,58 @@ def mask_key(key: str) -> str:
         return "****"
     return key[:4] + "****" + key[-4]
 
+def copy_directory(src: Path, dst: Path, files: list = None):
+    """复制目录，可选只复制指定文件列表"""
+    dst.mkdir(parents=True, exist_ok=True)
+    if files is None:
+        files = [f.name for f in src.iterdir() if f.is_file()]
+    for fname in files:
+        src_file = src / fname
+        if src_file.exists():
+            dst_file = dst / fname
+            dst_file.write_text(src_file.read_text(encoding="utf-8"), encoding="utf-8")
+
+def apply_identity_to_instance(instance_dir: Path, identity_id: str):
+    """应用身份模板到实例"""
+    identity_dir = PRESETS_DIR / "identities" / identity_id
+    if not identity_dir.exists():
+        return
+    workspace_dir = instance_dir / "workspace"
+    workspace_dir.mkdir(parents=True, exist_ok=True)
+    for fname in ["SOUL.md", "USER.md", "IDENTITY.md", "HEARTBEAT.md"]:
+        src_file = identity_dir / fname
+        if src_file.exists():
+            dst_file = workspace_dir / fname
+            dst_file.write_text(src_file.read_text(encoding="utf-8"), encoding="utf-8")
+
+def apply_skills_to_instance(instance_dir: Path, skill_ids: list):
+    """应用技能到实例"""
+    skills_dir = instance_dir / "workspace" / "skills"
+    skills_dir.mkdir(parents=True, exist_ok=True)
+    for skill_id in skill_ids:
+        src_dir = PRESETS_DIR / "skills" / skill_id
+        if src_dir.exists():
+            dst_dir = skills_dir / skill_id
+            dst_dir.mkdir(parents=True, exist_ok=True)
+            for f in src_dir.iterdir():
+                if f.is_file():
+                    (dst_dir / f.name).write_text(f.read_text(encoding="utf-8"), encoding="utf-8")
+
+def apply_plugins_to_instance(instance_dir: Path, plugin_ids: list, keys_data: dict):
+    """应用插件到实例"""
+    plugins_dir = instance_dir / "skills"
+    extensions_dir = instance_dir / "extensions"
+    plugins_dir.mkdir(parents=True, exist_ok=True)
+    extensions_dir.mkdir(parents=True, exist_ok=True)
+    for plugin_id in plugin_ids:
+        src_dir = PRESETS_DIR / "plugins" / plugin_id
+        if src_dir.exists():
+            dst_dir = plugins_dir / plugin_id
+            dst_dir.mkdir(parents=True, exist_ok=True)
+            for f in src_dir.iterdir():
+                if f.is_file():
+                    (dst_dir / f.name).write_text(f.read_text(encoding="utf-8"), encoding="utf-8")
+
 def get_next_instance_id() -> int:
     max_id = 0
     for d in CONFIG_INSTANCES_DIR.iterdir():
@@ -208,32 +270,44 @@ def find_available_ports(start_port: int = 18790, count: int = 3) -> list:
 
 
 @app.post("/api/instances")
-async def create_instance(data: dict):
-    name = data.get("name")
-    if not name:
-        raise HTTPException(400, "name is required")
-    
+async def create_instance(data: InstanceCreateRequest):
+    name = data.name
     if not isinstance(name, str) or not name.replace("-", "").replace("_", "").isalnum():
         raise HTTPException(400, "name must be alphanumeric with dashes/underscores only")
-    
     instance_dir = CONFIG_INSTANCES_DIR / name
     if instance_dir.exists():
         raise HTTPException(400, f"Instance {name} already exists")
-    
+
     instance_id = get_next_instance_id()
-    
     instance_dir.mkdir(parents=True, exist_ok=True)
-    
+
     token = secrets.token_hex(16)
-    
-    default_config = {
+
+    keys_data = load_preset_keys()
+
+    config = build_instance_config(instance_id, name, token, data, keys_data)
+    (instance_dir / "openclaw.json").write_text(json.dumps(config, indent=2))
+
+    create_instance_directories(instance_dir)
+
+    if data.identity and data.identity != "empty":
+        apply_identity_to_instance(instance_dir, data.identity)
+
+    if data.skills:
+        apply_skills_to_instance(instance_dir, data.skills)
+
+    if data.plugins:
+        apply_plugins_to_instance(instance_dir, data.plugins, keys_data)
+
+    return {"name": name, "instance_id": instance_id, "status": "created"}
+
+def build_instance_config(instance_id: int, name: str, token: str, data: InstanceCreateRequest, keys_data: dict) -> dict:
+    """构建实例的 openclaw.json"""
+    config = {
         "cluster": {
             "instanceId": instance_id,
             "instanceName": name,
             "description": f"Instance {name}"
-        },
-        "logging": {
-            "level": "info"
         },
         "gateway": {
             "mode": "local",
@@ -246,11 +320,62 @@ async def create_instance(data: dict):
                 "mode": "token",
                 "token": token
             }
+        },
+        "logging": {
+            "level": "info"
         }
     }
-    (instance_dir / "openclaw.json").write_text(json.dumps(default_config, indent=2))
-    
-    return {"name": name, "instance_id": instance_id, "status": "created"}
+
+    model_provider = data.modelProvider or keys_data.get("defaultProvider", "minimax")
+    if model_provider in keys_data.get("keys", {}):
+        provider_keys = keys_data["keys"][model_provider]
+        if "apiKey" in provider_keys:
+            config["env"] = {"MINIMAX_API_KEY": provider_keys["apiKey"]}
+
+    if data.channels:
+        config["channels"] = {}
+        if data.channels.get("feishu"):
+            feishu_keys = keys_data.get("keys", {}).get("feishu", {})
+            if feishu_keys.get("appId"):
+                config["channels"]["feishu"] = {
+                    "enabled": True,
+                    "appId": feishu_keys.get("appId"),
+                    "appSecret": feishu_keys.get("appSecret"),
+                    "verificationToken": feishu_keys.get("verificationToken"),
+                    "dmPolicy": "open",
+                    "allowFrom": ["*"]
+                }
+        if data.channels.get("weixin"):
+            config["channels"]["weixin"] = {"enabled": True}
+
+    if data.plugins:
+        config["plugins"] = {
+            "allow": data.plugins,
+            "load": {"paths": ["/app/extensions", "/root/.openclaw/extensions"]}
+        }
+
+    return config
+
+def create_instance_directories(instance_dir: Path):
+    """创建实例完整目录结构"""
+    dirs = [
+        "agents/main/agent",
+        "workspace/skills",
+        "workspace/memory",
+        "workspace",
+        "skills",
+        "extensions",
+        "memory",
+        "browser/profiles",
+        "cron",
+        "logs",
+        "devices",
+        "canvas",
+        "delivery-queue",
+        "local"
+    ]
+    for d in dirs:
+        (instance_dir / d).mkdir(parents=True, exist_ok=True)
 
 
 @app.delete("/api/instances/{name}")
