@@ -27,6 +27,8 @@ STACK_NAME = "nest"
 STACK_COMPOSE_PATH = os.environ.get("STACK_COMPOSE_PATH", "/app/compose/docker-compose.yml")
 CONFIG_BASE_DIR = Path(os.environ.get("CONFIG_BASE_DIR", "/app/configs/base"))
 CONFIG_INSTANCES_DIR = Path(os.environ.get("CONFIG_INSTANCES_DIR", "/app/configs/instances"))
+PRESETS_DIR = Path(os.environ.get("PRESETS_DIR", "/app/configs/presets"))
+PRESETS_KEYS_FILE = PRESETS_DIR / "keys.json"
 
 
 class InstanceConfig(BaseModel):
@@ -148,6 +150,20 @@ async def get_instance(name: str):
         "ports": container.ports,
     }
 
+
+def load_preset_keys() -> dict:
+    if PRESETS_KEYS_FILE.exists():
+        return json.loads(PRESETS_KEYS_FILE.read_text())
+    return {"version": 1, "keys": {}, "defaultProvider": "minimax"}
+
+def save_preset_keys(data: dict):
+    PRESETS_DIR.mkdir(parents=True, exist_ok=True)
+    PRESETS_KEYS_FILE.write_text(json.dumps(data, indent=2))
+
+def mask_key(key: str) -> str:
+    if not key or len(key) < 8:
+        return "****"
+    return key[:4] + "****" + key[-4]
 
 def get_next_instance_id() -> int:
     max_id = 0
@@ -839,6 +855,30 @@ async def get_workspace_files():
 @app.get("/api/presets/channels")
 async def get_channel_presets():
     return PRESETS["channels"]
+
+
+@app.get("/api/presets/keys")
+async def get_preset_keys():
+    """获取预制 Keys（脱敏显示）"""
+    keys_data = load_preset_keys()
+    sanitized = {}
+    for provider, key_info in keys_data.get("keys", {}).items():
+        sanitized[provider] = {
+            **key_info,
+            "apiKey": mask_key(key_info.get("apiKey", "")),
+            "appSecret": mask_key(key_info.get("appSecret", "")),
+            "corpSecret": mask_key(key_info.get("corpSecret", ""))
+        }
+    return {
+        **keys_data,
+        "keys": sanitized
+    }
+
+@app.put("/api/presets/keys")
+async def update_preset_keys(data: dict):
+    """更新预制 Keys"""
+    save_preset_keys(data)
+    return {"status": "saved"}
 
 
 @app.get("/api/instances/{name}/workspace/{filename}")
