@@ -365,9 +365,15 @@
                 </div>
                 <div class="form-group">
                     <label>镜像类型</label>
-                    <div>
-                        <label><input type="radio" name="image" value="openclaw:pure-gpu" checked> GPU</label>
-                        <label><input type="radio" name="image" value="openclaw:pure-cpu"> CPU</label>
+                    <div style="display: flex; gap: 16px; align-items: center;">
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="radio" name="image" value="openclaw:pure-gpu" checked style="width: auto; margin: 0;">
+                            GPU
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="radio" name="image" value="openclaw:pure-cpu" style="width: auto; margin: 0;">
+                            CPU
+                        </label>
                     </div>
                 </div>
             </div>

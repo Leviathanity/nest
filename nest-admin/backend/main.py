@@ -357,6 +357,9 @@ def build_instance_config(instance_id: int, name: str, token: str, data: Instanc
             "load": {"paths": ["/app/extensions", "/root/.openclaw/extensions"]}
         }
 
+    if hasattr(data, 'image') and data.image:
+        config["image"] = data.image
+
     return config
 
 def create_instance_directories(instance_dir: Path):
