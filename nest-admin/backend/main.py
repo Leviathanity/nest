@@ -968,16 +968,6 @@ PRESETS = {
 }
 
 
-@app.get("/api/presets/skills")
-async def get_skills_presets():
-    return PRESETS["skills"]
-
-
-@app.get("/api/presets/plugins")
-async def get_plugins_presets():
-    return PRESETS["plugins"]
-
-
 @app.get("/api/presets/core-templates")
 async def get_core_templates():
     return PRESETS["core_templates"]
@@ -1019,7 +1009,7 @@ async def get_preset_keys():
 async def update_preset_keys(data: dict):
     """更新预制 Keys"""
     if not isinstance(data, dict):
-        return {"error": "Invalid data format"}, 400
+        raise HTTPException(400, "Invalid data format")
     required_fields = ("version", "keys", "defaultProvider")
     if not all(field in data for field in required_fields):
         return {"error": f"Missing required fields: {required_fields}"}, 400
