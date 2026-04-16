@@ -45,9 +45,7 @@
         .instance-info div { margin-bottom: 4px; }
         .instance-info span { color: #333; }
         
-        .instance-actions { display: flex; flex-wrap: wrap; }
-        .instance-actions button { margin-right: 8px; margin-bottom: 8px; }
-        .instance-actions button:last-child { margin-right: 0; }
+        .instance-actions { display: flex; gap: 8px; flex-wrap: wrap; }
         
         button { padding: 6px 12px; border-radius: 4px; border: 1px solid #d9d9d9; cursor: pointer; font-size: 13px; transition: all 0.2s; }
         button:hover { border-color: #1890ff; color: #1890ff; }
@@ -682,12 +680,12 @@
         function getInstanceActionsHTML(inst) {
             const isRunning = inst.status === 'running';
             return `
-                ${!isRunning ? `<button class="primary" onclick="startInstance('${inst.name}')">启动</button>` : `<button onclick="stopInstance('${inst.name}')">停止</button>`}
-                <button onclick="restartInstance('${inst.name}')" ${!isRunning ? 'disabled' : ''}>重启</button>
-                <button onclick="openControlUi('${inst.name}')" ${!isRunning ? 'disabled' : ''}>控制台</button>
-                <button onclick="showLogs('${inst.name}')">日志</button>
-                <button onclick="showConfig('${inst.name}')">配置</button>
-                <button class="danger" onclick="deleteInstance('${inst.name}')">删除</button>
+                ${!isRunning ? `<button class="primary" data-action="start" data-name="${inst.name}">启动</button>` : `<button data-action="stop" data-name="${inst.name}">停止</button>`}
+                <button data-action="restart" data-name="${inst.name}" ${!isRunning ? 'disabled' : ''}>重启</button>
+                <button data-action="openControlUi" data-name="${inst.name}" ${!isRunning ? 'disabled' : ''}>控制台</button>
+                <button data-action="showLogs" data-name="${inst.name}">日志</button>
+                <button data-action="showConfig" data-name="${inst.name}">配置</button>
+                <button class="danger" data-action="delete" data-name="${inst.name}">删除</button>
             `;
         }
         
@@ -1556,6 +1554,22 @@
                 document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
                 if (btn.dataset.tab === 'keys') loadKeys();
             });
+        });
+        
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('[data-action]');
+            if (!btn) return;
+            const action = btn.dataset.action;
+            const name = btn.dataset.name;
+            switch (action) {
+                case 'start': startInstance(name); break;
+                case 'stop': stopInstance(name); break;
+                case 'restart': restartInstance(name); break;
+                case 'openControlUi': openControlUi(name); break;
+                case 'showLogs': showLogs(name); break;
+                case 'showConfig': showConfig(name); break;
+                case 'delete': deleteInstance(name); break;
+            }
         });
         
         document.addEventListener('DOMContentLoaded', function() {
