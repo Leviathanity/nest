@@ -48,7 +48,7 @@ class InstanceCreateRequest(BaseModel):
     identity: Optional[str] = "empty"
     skills: Optional[list[str]] = []
     plugins: Optional[list[str]] = []
-    modelProvider: Optional[str] = "minimax"
+    model: Optional[str] = "minimax/MiniMax-M2.7-highspeed"
     channels: Optional[dict] = {}
 
 
@@ -371,6 +371,20 @@ def build_instance_config(instance_id: int, name: str, token: str, data: Instanc
             "allow": data.plugins,
             "load": {"paths": ["/app/extensions", "/root/.openclaw/extensions"]}
         }
+
+    model = data.model or "minimax/MiniMax-M2.7-highspeed"
+    if "/" in model:
+        provider, model_id = model.split("/", 1)
+    else:
+        provider, model_id = "minimax", model
+
+    config["agents"] = {
+        "defaults": {
+            "model": {
+                "primary": f"{provider}/{model_id}"
+            }
+        }
+    }
 
     return config
 
