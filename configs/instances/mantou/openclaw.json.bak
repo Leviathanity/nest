@@ -11,24 +11,17 @@
     },
     "auth": {
       "mode": "token",
-      "token": "2dfe66ad1abc81d0d88a147de977484c"
+      "token": "84d0c389857656262b54eb39c01d92a5"
     }
   },
   "logging": {
     "level": "info"
   },
-  "env": {
-    "MINIMAX_API_KEY": "test-key-12345678"
-  },
-  "plugins": {
-    "allow": [
-      "feishu"
-    ],
-    "load": {
-      "paths": [
-        "/app/extensions",
-        "/root/.openclaw/extensions"
-      ]
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "minimax/MiniMax-M2.7-highspeed"
+      }
     }
   }
 }

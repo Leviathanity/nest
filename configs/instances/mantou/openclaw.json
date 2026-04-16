@@ -11,13 +11,28 @@
     },
     "auth": {
       "mode": "token",
-      "token": "60f3ea52796edaebc59466727fecdeb1"
+      "token": "84d0c389857656262b54eb39c01d92a5"
     }
   },
   "logging": {
     "level": "info"
   },
-  "env": {
-    "MINIMAX_API_KEY": "test-key-12345678"
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "minimax/MiniMax-M2.7-highspeed"
+      }
+    }
+  },
+  "plugins": {
+    "entries": {
+      "minimax": {
+        "enabled": true
+      }
+    }
+  },
+  "meta": {
+    "lastTouchedVersion": "2026.4.14-beta.1",
+    "lastTouchedAt": "2026-04-16T10:49:40.250Z"
   }
 }

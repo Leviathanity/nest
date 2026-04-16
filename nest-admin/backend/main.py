@@ -345,13 +345,6 @@ def build_instance_config(instance_id: int, name: str, token: str, data: Instanc
         }
     }
 
-    model_provider = data.model or keys_data.get("defaultProvider", "minimax")
-    if model_provider in keys_data.get("keys", {}):
-        provider_keys = keys_data["keys"][model_provider]
-        if "apiKey" in provider_keys:
-            env_var_name = f"{model_provider.upper()}_API_KEY"
-            config["env"] = {env_var_name: provider_keys["apiKey"]}
-
     if data.channels:
         config["channels"] = {}
         if data.channels.get("feishu"):
@@ -385,6 +378,13 @@ def build_instance_config(instance_id: int, name: str, token: str, data: Instanc
             }
         }
     }
+
+    if data.apiKey:
+        config["env"] = {f"{provider.upper()}_API_KEY": data.apiKey}
+    elif provider in keys_data.get("keys", {}):
+        provider_keys = keys_data["keys"][provider]
+        if "apiKey" in provider_keys:
+            config["env"] = {f"{provider.upper()}_API_KEY": provider_keys["apiKey"]}
 
     return config
 
