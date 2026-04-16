@@ -42,6 +42,17 @@ class InstanceConfig(BaseModel):
     cluster: Optional[dict] = None
 
 
+class InstanceCreateRequest(BaseModel):
+    name: str
+    image: Optional[str] = "openclaw:pure-gpu"
+    identity: Optional[str] = "empty"
+    skills: Optional[list[str]] = []
+    plugins: Optional[list[str]] = []
+    model: Optional[str] = "minimax/MiniMax-M2.7-highspeed"
+    apiKey: Optional[str] = None
+    channels: Optional[dict] = {}
+
+
 class WebhookConfig(BaseModel):
     url: str = ""
     enabled: bool = False
@@ -155,7 +166,7 @@ def get_next_instance_id() -> int:
     return max_id + 1
 
 
-def add_service_to_compose(name: str, image: str, ip: str, http_port: int, app_port: int, data_port: int) -> bool:
+def add_service_to_compose(name: str, image: str, ip: str, http_port: int, app_port: int, data_port: int, api_key: Optional[str] = None) -> bool:
     backup_compose_file()
     try:
         compose_content = {}
@@ -188,8 +199,8 @@ def add_service_to_compose(name: str, image: str, ip: str, http_port: int, app_p
                 f"INSTANCE_ID={instance_id}",
                 "NODE_ENV=production",
                 "TZ=Asia/Shanghai",
-                "MINIMAX_API_KEY=${MINIMAX_API_KEY}",
-                "AUTOGLM_API_KEY=${MINIMAX_API_KEY}",
+                f"MINIMAX_API_KEY={api_key if api_key else '${MINIMAX_API_KEY}'}",
+                f"AUTOGLM_API_KEY={api_key if api_key else '${MINIMAX_API_KEY}'}",
                 "FEISHU_APP_ID=dummy",
                 "FEISHU_APP_SECRET=dummy",
                 "FEISHU_VERIFICATION_TOKEN=dummy"
@@ -382,22 +393,18 @@ async def get_instance(name: str):
 
 
 @app.post("/api/instances")
-async def create_instance(data: dict):
-    name = data.get("name")
+async def create_instance(data: InstanceCreateRequest):
+    name = data.name
     if not name:
         raise HTTPException(400, "name is required")
     
     if not isinstance(name, str) or not name.replace("-", "").replace("_", "").isalnum():
         raise HTTPException(400, "name must be alphanumeric with dashes/underscores only")
     
-    instance_type = data.get("instance_type", "compose")
-    gpu = data.get("gpu", True)
+    instance_type = data.instance_type or "compose"
+    gpu = data.gpu if data.gpu is not None else True
     
-    # Determine image: explicit image takes precedence, otherwise use gpu flag
-    if ("image" in data and data["image"]):
-        image = data["image"]
-    else:
-        image = "openclaw:pure-gpu" if gpu else "openclaw:pure-cpu"
+    image = data.image if data.image else "openclaw:pure-gpu" if gpu else "openclaw:pure-cpu"
 
     instance_dir = CONFIG_INSTANCES_DIR / name
     instance_dir.mkdir(parents=True, exist_ok=True)
@@ -491,11 +498,19 @@ async def create_instance(data: dict):
     }
     (instance_dir / "openclaw.json").write_text(json.dumps(default_config, indent=2))
 
+    model = data.model or "minimax/MiniMax-M2.7-highspeed"
+    if "/" in model:
+        provider, model_id = model.split("/", 1)
+    else:
+        provider, model_id = "minimax", model
+
+    api_key_to_use = data.apiKey
+
     if instance_type == "compose":
         ip = get_next_ip()
         http_port, app_port, data_port = get_next_ports()
         volume_name = create_instance_volume(name)
-        add_service_to_compose(name, image, ip, http_port, app_port, data_port)
+        add_service_to_compose(name, image, ip, http_port, app_port, data_port, api_key=api_key_to_use)
         returncode, stdout, stderr = start_compose_service(name)
         if returncode != 0:
             return {"name": name, "status": "created_with_errors", "compose_error": stderr}
