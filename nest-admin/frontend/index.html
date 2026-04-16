@@ -1009,7 +1009,7 @@
                     identity: createSelections.identity,
                     skills: createSelections.skills,
                     plugins: createSelections.plugins,
-                    modelProvider: 'minimax',
+                    model: document.getElementById('model-select').value || 'minimax/MiniMax-M2.7-highspeed',
                     channels: {}
                 });
                 closeModal('create');
