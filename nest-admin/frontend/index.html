@@ -366,8 +366,12 @@
                                 <option value="codex/gpt-5.2">GPT-5.2</option>
                             </select>
                         </div>
+                        <div class="form-group" style="margin-top:12px;">
+                            <label>API Key (留空则使用预设Key)</label>
+                            <input type="password" id="instance-api-key" placeholder="输入自定义API Key" style="width:100%;padding:8px 12px;border:1px solid #d9d9d9;border-radius:4px;font-size:14px;">
+                        </div>
                         <div style="font-size:12px;color:#888;margin-top:8px;">
-                            选择的模型将用于实例的默认AI模型配置
+                            留空将使用预设的API Key，或输入自己的Key覆盖默认配置
                         </div>
                     </div>
                 </div>
@@ -1003,6 +1007,7 @@
             const image = document.querySelector('input[name="image"]:checked').value;
 
             try {
+                const apiKey = document.getElementById('instance-api-key').value.trim();
                 await api('POST', '/api/instances', {
                     name,
                     image,
@@ -1010,6 +1015,7 @@
                     skills: createSelections.skills,
                     plugins: createSelections.plugins,
                     model: document.getElementById('model-select').value || 'minimax/MiniMax-M2.7-highspeed',
+                    apiKey: apiKey || null,
                     channels: {}
                 });
                 closeModal('create');
