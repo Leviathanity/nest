@@ -40,7 +40,6 @@ class InstanceConfig(BaseModel):
     plugins: Optional[dict] = None
     memory: Optional[dict] = None
     logging: Optional[dict] = None
-    cluster: Optional[dict] = None
 
 
 class InstanceCreateRequest(BaseModel):
@@ -260,11 +259,11 @@ def get_next_instance_id() -> int:
     max_id = 0
     for d in CONFIG_INSTANCES_DIR.iterdir():
         if d.is_dir():
-            config_file = d / "openclaw.json"
-            if config_file.exists():
+            meta_file = d / "meta.json"
+            if meta_file.exists():
                 try:
-                    config = json.loads(config_file.read_text())
-                    instance_id = config.get("cluster", {}).get("instanceId", 0)
+                    meta = json.loads(meta_file.read_text())
+                    instance_id = meta.get("instance_id", 0)
                     if instance_id > max_id:
                         max_id = instance_id
                 except Exception:
@@ -309,7 +308,7 @@ async def create_instance(data: InstanceCreateRequest):
     config = build_instance_config(instance_id, name, token, data, keys_data)
     (instance_dir / "openclaw.json").write_text(json.dumps(config, indent=2))
 
-    meta = {"image": data.image or "openclaw:pure-gpu"}
+    meta = {"image": data.image or "openclaw:pure-gpu", "instance_id": instance_id}
     (instance_dir / "meta.json").write_text(json.dumps(meta, indent=2))
 
     create_instance_directories(instance_dir)
@@ -372,11 +371,6 @@ def build_instance_config(instance_id: int, name: str, token: str, data: Instanc
             "allow": data.plugins,
             "load": {"paths": ["/app/extensions", "/root/.openclaw/extensions"]}
         }
-
-    config["cluster"] = {
-        "instanceId": instance_id,
-        "instanceName": name
-    }
 
     return config
 
@@ -449,7 +443,6 @@ async def start_instance(name: str):
         
         try:
             config = json.loads(config_path.read_text())
-            instance_id = config.get("cluster", {}).get("instanceId", 1)
             
             used_ports = set()
             for c in CLIENT.containers.list(all=True):
@@ -492,8 +485,10 @@ async def start_instance(name: str):
 
             meta_path = CONFIG_INSTANCES_DIR / name / "meta.json"
             meta = {}
+            instance_id = 1
             if meta_path.exists():
                 meta = json.loads(meta_path.read_text())
+                instance_id = meta.get("instance_id", 1)
             image_name = meta.get("image", "openclaw:pure-gpu")
             container = CLIENT.containers.run(
                 image=image_name,
