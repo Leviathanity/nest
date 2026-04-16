@@ -345,7 +345,7 @@ def build_instance_config(instance_id: int, name: str, token: str, data: Instanc
         }
     }
 
-    model_provider = data.modelProvider or keys_data.get("defaultProvider", "minimax")
+    model_provider = data.model or keys_data.get("defaultProvider", "minimax")
     if model_provider in keys_data.get("keys", {}):
         provider_keys = keys_data["keys"][model_provider]
         if "apiKey" in provider_keys:
