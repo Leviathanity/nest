@@ -421,6 +421,7 @@ async def create_instance(data: InstanceCreateRequest):
             "providers": {
                 "minimax": {
                     "baseUrl": "https://api.minimaxi.com/anthropic",
+                    "apiKey": "${MINIMAX_API_KEY}",
                     "api": "anthropic-messages",
                     "authHeader": True,
                     "models": [
@@ -440,7 +441,7 @@ async def create_instance(data: InstanceCreateRequest):
         "agents": {
             "defaults": {
                 "model": {
-                    "primary": "minimax/MiniMax-M2.7-highspeed"
+                    "primary": "MiniMax-M2.7-highspeed"
                 },
                 "compaction": {
                     "mode": "safeguard"
