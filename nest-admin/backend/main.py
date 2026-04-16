@@ -556,12 +556,6 @@ async def start_instance(name: str):
     import time
     time.sleep(2)
 
-    copy_result = container.exec_run(
-        "sh -c 'cp /app/configs/instance/openclaw.json /root/.openclaw/openclaw.json'"
-    )
-    if copy_result.exit_code != 0:
-        raise HTTPException(500, f"Failed to copy instance config: {copy_result.output.decode()}")
-
     return {"name": name, "status": "started"}
 
 
