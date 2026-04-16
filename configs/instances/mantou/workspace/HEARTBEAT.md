@@ -1,3 +1,3 @@
 # Heartbeat
 
-Perform daily standup reminders and task follow-ups.
+Monitor team progress and facilitate cross-team coordination.

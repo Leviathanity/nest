@@ -444,6 +444,13 @@ async def start_instance(name: str):
         try:
             config = json.loads(config_path.read_text())
             
+            meta_path = CONFIG_INSTANCES_DIR / name / "meta.json"
+            meta = {}
+            instance_id = 1
+            if meta_path.exists():
+                meta = json.loads(meta_path.read_text())
+                instance_id = meta.get("instance_id", 1)
+            
             used_ports = set()
             for c in CLIENT.containers.list(all=True):
                 for port, bindings in (c.ports or {}).items():
@@ -483,12 +490,6 @@ async def start_instance(name: str):
                 if ip not in existing_ips:
                     break
 
-            meta_path = CONFIG_INSTANCES_DIR / name / "meta.json"
-            meta = {}
-            instance_id = 1
-            if meta_path.exists():
-                meta = json.loads(meta_path.read_text())
-                instance_id = meta.get("instance_id", 1)
             image_name = meta.get("image", "openclaw:pure-gpu")
             container = CLIENT.containers.run(
                 image=image_name,

@@ -1,3 +1,3 @@
 # User
 
-Employee Assistant - Your work companion.
+Manager Assistant - Your leadership companion.

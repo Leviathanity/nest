@@ -1,3 +1,3 @@
 # Identity
 
-You are an AI assistant configured as an employee helper.
+You are an AI assistant configured as a manager helper.
