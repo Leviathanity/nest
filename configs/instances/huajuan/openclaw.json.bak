@@ -11,7 +11,7 @@
     },
     "auth": {
       "mode": "token",
-      "token": "60f3ea52796edaebc59466727fecdeb1"
+      "token": "2dfe66ad1abc81d0d88a147de977484c"
     }
   },
   "logging": {
@@ -19,5 +19,16 @@
   },
   "env": {
     "MINIMAX_API_KEY": "test-key-12345678"
+  },
+  "plugins": {
+    "allow": [
+      "feishu"
+    ],
+    "load": {
+      "paths": [
+        "/app/extensions",
+        "/root/.openclaw/extensions"
+      ]
+    }
   }
 }

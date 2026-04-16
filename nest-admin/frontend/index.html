@@ -324,6 +324,7 @@
                 <button class="create-tab active" data-create-tab="identity">身份模板</button>
                 <button class="create-tab" data-create-tab="skills">技能</button>
                 <button class="create-tab" data-create-tab="plugins">插件</button>
+                <button class="create-tab" data-create-tab="model">模型</button>
             </div>
             
             <!-- 搜索栏 -->
@@ -348,6 +349,27 @@
                 <!-- 插件 -->
                 <div id="create-tab-plugins" class="create-tab-panel" style="display:none;">
                     <div id="plugins-cards" class="preset-cards-grid"></div>
+                </div>
+
+                <!-- 模型 -->
+                <div id="create-tab-model" class="create-tab-panel" style="display:none;">
+                    <div class="model-selection">
+                        <div class="form-group">
+                            <label>选择模型</label>
+                            <select id="model-select" style="width:100%;padding:8px 12px;border:1px solid #d9d9d9;border-radius:4px;font-size:14px;">
+                                <option value="minimax/MiniMax-M2.7-highspeed">MiniMax M2.7 超速版 (推荐)</option>
+                                <option value="minimax/MiniMax-M2.5-highspeed">MiniMax M2.5 超速版</option>
+                                <option value="minimax/MiniMax-M2.5">MiniMax M2.5 标准版</option>
+                                <option value="minimax/MiniMax-VL-01">MiniMax VL 视觉版 (支持图片)</option>
+                                <option value="codex/gpt-5.4">GPT-5.4</option>
+                                <option value="codex/gpt-5.4-mini">GPT-5.4-Mini</option>
+                                <option value="codex/gpt-5.2">GPT-5.2</option>
+                            </select>
+                        </div>
+                        <div style="font-size:12px;color:#888;margin-top:8px;">
+                            选择的模型将用于实例的默认AI模型配置
+                        </div>
+                    </div>
                 </div>
             </div>
             

@@ -1,0 +1,10 @@
+{
+  "agent:main:main": {
+    "sessionId": "4a229e02-f48c-4348-98a9-84c15ea4595e",
+    "updatedAt": 1776335413099,
+    "providerOverride": "openrouter",
+    "modelOverride": "minimax/minimax-m2.7",
+    "modelOverrideSource": "user",
+    "liveModelSwitchPending": true
+  }
+}
