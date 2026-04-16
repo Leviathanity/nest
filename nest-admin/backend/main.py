@@ -107,13 +107,18 @@ async def list_instances():
     instances = []
     for c in containers:
         config_path = CONFIG_INSTANCES_DIR / c["instance_id"] / "openclaw.json"
+        meta_path = CONFIG_INSTANCES_DIR / c["instance_id"] / "meta.json"
         config = {}
+        meta = {}
         if config_path.exists():
             config = json.loads(config_path.read_text())
+        if meta_path.exists():
+            meta = json.loads(meta_path.read_text())
         instances.append({
             **c,
             "config": config,
             "config_exists": config_path.exists(),
+            "image": meta.get("image", "openclaw:pure-gpu"),
         })
     
     configured_dirs = []
@@ -124,14 +129,18 @@ async def list_instances():
     
     for name in configured_dirs:
         config_path = CONFIG_INSTANCES_DIR / name / "openclaw.json"
+        meta_path = CONFIG_INSTANCES_DIR / name / "meta.json"
         config = {}
+        meta = {}
         if config_path.exists():
             config = json.loads(config_path.read_text())
+        if meta_path.exists():
+            meta = json.loads(meta_path.read_text())
         instances.append({
             "name": name,
             "status": "stopped",
             "instance_id": name,
-            "image": "unknown",
+            "image": meta.get("image", "openclaw:pure-gpu"),
             "created": "",
             "ports": {},
             "config": config,
@@ -148,15 +157,19 @@ async def get_instance(name: str):
         raise HTTPException(404, f"Instance {name} not found")
     
     config_path = CONFIG_INSTANCES_DIR / name / "openclaw.json"
+    meta_path = CONFIG_INSTANCES_DIR / name / "meta.json"
     config = {}
+    meta = {}
     if config_path.exists():
         config = json.loads(config_path.read_text())
+    if meta_path.exists():
+        meta = json.loads(meta_path.read_text())
     
     container.reload()
     return {
         "name": container.name,
         "status": container.status,
-        "image": container.image.tags[0] if container.image.tags else container.image.short_id,
+        "image": meta.get("image", container.image.tags[0] if container.image.tags else container.image.short_id),
         "instance_id": name,
         "config": config,
         "created": container.attrs.get("Created", "")[:19].replace("T", " "),
@@ -296,6 +309,9 @@ async def create_instance(data: InstanceCreateRequest):
     config = build_instance_config(instance_id, name, token, data, keys_data)
     (instance_dir / "openclaw.json").write_text(json.dumps(config, indent=2))
 
+    meta = {"image": data.image or "openclaw:pure-gpu"}
+    (instance_dir / "meta.json").write_text(json.dumps(meta, indent=2))
+
     create_instance_directories(instance_dir)
 
     if data.identity and data.identity != "empty":
@@ -356,9 +372,6 @@ def build_instance_config(instance_id: int, name: str, token: str, data: Instanc
             "allow": data.plugins,
             "load": {"paths": ["/app/extensions", "/root/.openclaw/extensions"]}
         }
-
-    if hasattr(data, 'image') and data.image:
-        config["image"] = data.image
 
     return config
 
@@ -478,7 +491,11 @@ async def start_instance(name: str):
             except docker.errors.NotFound:
                 CLIENT.volumes.create(data_volume_name)
 
-            image_name = config.get("image", "openclaw:pure-gpu")
+            meta_path = CONFIG_INSTANCES_DIR / name / "meta.json"
+            meta = {}
+            if meta_path.exists():
+                meta = json.loads(meta_path.read_text())
+            image_name = meta.get("image", "openclaw:pure-gpu")
             container = CLIENT.containers.run(
                 image=image_name,
                 name=name,
