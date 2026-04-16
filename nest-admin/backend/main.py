@@ -317,10 +317,10 @@ async def create_instance(data: InstanceCreateRequest):
     models_config = {
         "providers": {
             "minimax": {
-                "baseUrl": "https://api.minimax.io/anthropic/v1",
+                "baseUrl": "https://api.minimaxi.com/anthropic",
                 "api": "anthropic-messages",
                 "authHeader": True,
-                "apiKey": "MINIMAX_API_KEY",
+                "apiKey": "${MINIMAX_API_KEY}",
                 "models": [
                     {
                         "id": "minimax/MiniMax-M2.7-highspeed",
@@ -366,8 +366,6 @@ async def create_instance(data: InstanceCreateRequest):
             }
         }
     }
-    (instance_dir / "agents" / "main" / "agent" / "models.json").write_text(json.dumps(models_config, indent=2))
-
     if data.identity and data.identity != "empty":
         apply_identity_to_instance(instance_dir, data.identity)
 
@@ -440,6 +438,28 @@ def build_instance_config(instance_id: int, name: str, token: str, data: Instanc
         provider_keys = keys_data["keys"][provider]
         if "apiKey" in provider_keys:
             config["env"] = {f"{provider.upper()}_API_KEY": provider_keys["apiKey"]}
+
+    config["models"] = {
+        "mode": "merge",
+        "providers": {
+            "minimax": {
+                "baseUrl": "https://api.minimaxi.com/anthropic",
+                "apiKey": "${MINIMAX_API_KEY}",
+                "api": "anthropic-messages",
+                "models": [
+                    {
+                        "id": "MiniMax-M2.7-highspeed",
+                        "name": "MiniMax M2.7 HighSpeed",
+                        "reasoning": False,
+                        "input": ["text"],
+                        "cost": {"input": 15, "output": 60, "cacheRead": 2, "cacheWrite": 10},
+                        "contextWindow": 200000,
+                        "maxTokens": 8192
+                    }
+                ]
+            }
+        }
+    }
 
     return config
 
