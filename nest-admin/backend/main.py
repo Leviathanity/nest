@@ -169,7 +169,7 @@ async def get_instance(name: str):
     return {
         "name": container.name,
         "status": container.status,
-        "image": meta.get("image", container.image.tags[0] if container.image.tags else container.image.short_id),
+        "image": meta.get("image", "openclaw:pure-gpu"),
         "instance_id": name,
         "config": config,
         "created": container.attrs.get("Created", "")[:19].replace("T", " "),
