@@ -49,6 +49,7 @@ class InstanceCreateRequest(BaseModel):
     skills: Optional[list[str]] = []
     plugins: Optional[list[str]] = []
     model: Optional[str] = "minimax/MiniMax-M2.7-highspeed"
+    apiKey: Optional[str] = None
     channels: Optional[dict] = {}
 
 
@@ -312,6 +313,60 @@ async def create_instance(data: InstanceCreateRequest):
     (instance_dir / "meta.json").write_text(json.dumps(meta, indent=2))
 
     create_instance_directories(instance_dir)
+
+    models_config = {
+        "providers": {
+            "minimax": {
+                "baseUrl": "https://api.minimax.io/anthropic/v1",
+                "api": "anthropic-messages",
+                "authHeader": True,
+                "apiKey": "MINIMAX_API_KEY",
+                "models": [
+                    {
+                        "id": "minimax/MiniMax-M2.7-highspeed",
+                        "name": "M2.7 超速版",
+                        "reasoning": True,
+                        "input": ["text"],
+                        "contextWindow": 204800,
+                        "maxTokens": 131072
+                    },
+                    {
+                        "id": "minimax/MiniMax-M2.7",
+                        "name": "M2.7 标准版",
+                        "reasoning": True,
+                        "input": ["text"],
+                        "contextWindow": 204800,
+                        "maxTokens": 131072
+                    },
+                    {
+                        "id": "minimax/MiniMax-M2.5-highspeed",
+                        "name": "M2.5 超速版",
+                        "reasoning": True,
+                        "input": ["text"],
+                        "contextWindow": 100000,
+                        "maxTokens": 8192
+                    },
+                    {
+                        "id": "minimax/MiniMax-M2.5",
+                        "name": "M2.5 标准版",
+                        "reasoning": True,
+                        "input": ["text"],
+                        "contextWindow": 100000,
+                        "maxTokens": 16384
+                    },
+                    {
+                        "id": "minimax/MiniMax-VL-01",
+                        "name": "VL 视觉版",
+                        "reasoning": False,
+                        "input": ["text", "image"],
+                        "contextWindow": 100000,
+                        "maxTokens": 16384
+                    }
+                ]
+            }
+        }
+    }
+    (instance_dir / "agents" / "main" / "agent" / "models.json").write_text(json.dumps(models_config, indent=2))
 
     if data.identity and data.identity != "empty":
         apply_identity_to_instance(instance_dir, data.identity)
