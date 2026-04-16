@@ -547,6 +547,18 @@ async def start_instance(name: str):
     if container.status == "running":
         return {"name": name, "status": "already running"}
 
+    meta_path = CONFIG_INSTANCES_DIR / name / "meta.json"
+    if meta_path.exists():
+        meta = json.loads(meta_path.read_text())
+        desired_image = meta.get("image", "openclaw:pure-gpu")
+        current_image = container.image.tags[0] if container.image.tags else container.image.short_id
+        if desired_image != current_image:
+            logger.warning(
+                f"Container '{name}' was created with image '{current_image}' "
+                f"but meta.json specifies '{desired_image}'. "
+                f"The container may need to be recreated to use the new image."
+            )
+
     container.start()
 
     import time

@@ -1,0 +1,31 @@
+{
+  "cluster": {
+    "instanceId": 1,
+    "instanceName": "mantou",
+    "description": "Instance mantou"
+  },
+  "image": "openclaw:pure-cpu",
+  "gateway": {
+    "mode": "local",
+    "bind": "lan",
+    "controlUi": {
+      "dangerouslyDisableDeviceAuth": true,
+      "allowInsecureAuth": true
+    },
+    "auth": {
+      "mode": "token",
+      "token": "07ca8424ab5fc7f123b3ec8c09f7f027"
+    }
+  },
+  "logging": {
+    "level": "info"
+  },
+  "env": {
+    "MINIMAX_API_KEY": "test-key-12345678"
+  },
+  "channels": {
+    "weixin": {
+      "enabled": true
+    }
+  }
+}
