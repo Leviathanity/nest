@@ -577,12 +577,6 @@ async def restart_instance(name: str):
         raise HTTPException(404, f"Instance {name} not found")
     container.restart(timeout=30)
 
-    copy_result = container.exec_run(
-        "sh -c 'cp /app/configs/instance/openclaw.json /root/.openclaw/openclaw.json'"
-    )
-    if copy_result.exit_code != 0:
-        raise HTTPException(500, f"Failed to copy instance config: {copy_result.output.decode()}")
-
     return {"name": name, "status": "restarted"}
 
 
