@@ -373,6 +373,11 @@ def build_instance_config(instance_id: int, name: str, token: str, data: Instanc
             "load": {"paths": ["/app/extensions", "/root/.openclaw/extensions"]}
         }
 
+    config["cluster"] = {
+        "instanceId": instance_id,
+        "instanceName": name
+    }
+
     return config
 
 def create_instance_directories(instance_dir: Path):
