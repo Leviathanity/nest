@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "8db52b5e-1ef6-4a61-b492-f0f5394cbdc6",
-    "updatedAt": 1776410133555,
+    "updatedAt": 1776411926129,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -288,15 +288,13 @@
       "version": 0
     },
     "status": "done",
-    "startedAt": 1776410120226,
-    "endedAt": 1776410133457,
-    "runtimeMs": 13231,
+    "startedAt": 1776411918951,
     "modelProvider": "minimax",
     "model": "MiniMax-M2.7-highspeed",
     "contextTokens": 200000,
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1776410120191,
+      "generatedAt": 1776411918920,
       "sessionId": "8db52b5e-1ef6-4a61-b492-f0f5394cbdc6",
       "sessionKey": "agent:main:main",
       "provider": "minimax",
@@ -600,12 +598,14 @@
         ]
       }
     },
-    "inputTokens": 833,
-    "outputTokens": 218,
+    "inputTokens": 676,
+    "outputTokens": 136,
     "cacheRead": 14769,
     "cacheWrite": 0,
-    "estimatedCostUsd": 0.233531,
-    "totalTokens": 15225,
-    "totalTokensFresh": true
+    "estimatedCostUsd": 0.433179,
+    "totalTokens": 15356,
+    "totalTokensFresh": true,
+    "endedAt": 1776411926053,
+    "runtimeMs": 7102
   }
 }
