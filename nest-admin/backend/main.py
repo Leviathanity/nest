@@ -238,18 +238,16 @@ def apply_skills_to_instance(instance_dir: Path, skill_ids: list):
             shutil.rmtree(dst_dir)
         shutil.copytree(src_dir, dst_dir)
 
-def apply_plugins_to_instance(instance_dir: Path, plugin_ids: list, keys_data: dict):
-    """应用插件到实例"""
-    plugins_dir = instance_dir / "skills"
+def apply_extensions_to_instance(instance_dir: Path, extension_ids: list, keys_data: dict):
+    """应用扩展到实例"""
     extensions_dir = instance_dir / "extensions"
-    plugins_dir.mkdir(parents=True, exist_ok=True)
     extensions_dir.mkdir(parents=True, exist_ok=True)
-    for plugin_id in plugin_ids:
-        src_dir = PRESETS_DIR / "plugins" / plugin_id
+    for extension_id in extension_ids:
+        src_dir = PRESETS_DIR / "extensions" / extension_id
         if not src_dir.exists():
-            logger.warning(f"Plugin preset not found: {plugin_id}")
+            logger.warning(f"Extension preset not found: {extension_id}")
             continue
-        dst_dir = plugins_dir / plugin_id
+        dst_dir = extensions_dir / extension_id
         dst_dir.mkdir(parents=True, exist_ok=True)
         for f in src_dir.iterdir():
             if f.is_file():
@@ -372,7 +370,7 @@ async def create_instance(data: InstanceCreateRequest):
         apply_skills_to_instance(instance_dir, data.skills)
 
     if data.plugins:
-        apply_plugins_to_instance(instance_dir, data.plugins, keys_data)
+        apply_extensions_to_instance(instance_dir, data.plugins, keys_data)
 
     return {"name": name, "instance_id": instance_id, "status": "created"}
 
@@ -1208,19 +1206,19 @@ async def get_skill(skill_id: str):
         content = skill_md.read_text(encoding="utf-8")
     return {"id": skill_id, "content": content}
 
-@app.get("/api/presets/plugins")
-async def list_plugins():
-    """获取插件列表"""
-    plugins_dir = PRESETS_DIR / "plugins"
-    if not plugins_dir.exists():
+@app.get("/api/presets/extensions")
+async def list_extensions():
+    """获取扩展列表"""
+    extensions_dir = PRESETS_DIR / "extensions"
+    if not extensions_dir.exists():
         return []
     result = []
-    for d in plugins_dir.iterdir():
+    for d in extensions_dir.iterdir():
         if d.is_dir():
             result.append({
                 "id": d.name,
                 "name": d.name,
-                "description": f"{d.name} plugin"
+                "description": f"{d.name} extension"
             })
     return result
 

@@ -323,7 +323,7 @@
             <div class="create-tabs">
                 <button class="create-tab active" data-create-tab="identity">身份模板</button>
                 <button class="create-tab" data-create-tab="skills">技能</button>
-                <button class="create-tab" data-create-tab="plugins">插件</button>
+                <button class="create-tab" data-create-tab="extensions">插件</button>
                 <button class="create-tab" data-create-tab="model">模型</button>
             </div>
             
@@ -347,8 +347,8 @@
                 </div>
                 
                 <!-- 插件 -->
-                <div id="create-tab-plugins" class="create-tab-panel" style="display:none;">
-                    <div id="plugins-cards" class="preset-cards-grid"></div>
+                <div id="create-tab-extensions" class="create-tab-panel" style="display:none;">
+                    <div id="extensions-cards" class="preset-cards-grid"></div>
                 </div>
 
                 <!-- 模型 -->
@@ -424,7 +424,7 @@
                 <button class="config-tab" data-config-tab="model">模型配置</button>
                 <button class="config-tab" data-config-tab="channel">渠道</button>
                 <button class="config-tab" data-config-tab="skills">技能</button>
-                <button class="config-tab" data-config-tab="plugins">插件</button>
+                <button class="config-tab" data-config-tab="extensions">插件</button>
                 <button class="config-tab" data-config-tab="workspace">工作区</button>
                 <button class="config-tab" data-config-tab="json">JSON</button>
             </div>
@@ -509,9 +509,9 @@
                 </div>
                 
                 <!-- Plugins Tab -->
-                <div id="config-tab-plugins" class="config-panel" style="display:none;">
+                <div id="config-tab-extensions" class="config-panel" style="display:none;">
                     <div class="section-title">选择启用的插件</div>
-                    <div id="plugins-list" class="checkbox-grid"></div>
+                    <div id="extensions-list" class="checkbox-grid"></div>
                 </div>
                 
                 <!-- Workspace Files Tab -->
@@ -562,13 +562,13 @@
         const API_BASE = 'http://192.168.2.118:8080';
         let currentInstance = null;
         let currentInstanceHttpPort = 18789;
-        let presets = { skills: [], plugins: [], core_templates: [], model_providers: [], workspace_files: [], channels: [] };
+        let presets = { skills: [], extensions: [], core_templates: [], model_providers: [], workspace_files: [], channels: [] };
         let currentConfig = {};
         let currentWorkspaceFile = null;
         let createSelections = {
             identity: null,
             skills: [],
-            plugins: []
+            extensions: []
         };
         let currentCreateTab = 'identity';
         let selectedModels = {};
@@ -597,10 +597,10 @@
         
         async function loadPresets() {
             try {
-                const [identities, skills, plugins, keys, model_providers, core_templates, workspace_files, channels] = await Promise.all([
+                const [identities, skills, extensions, keys, model_providers, core_templates, workspace_files, channels] = await Promise.all([
                     api('GET', '/api/presets/identities'),
                     api('GET', '/api/presets/skills'),
-                    api('GET', '/api/presets/plugins'),
+                    api('GET', '/api/presets/extensions'),
                     api('GET', '/api/presets/keys'),
                     api('GET', '/api/presets/model-providers'),
                     api('GET', '/api/presets/core-templates'),
@@ -609,7 +609,7 @@
                 ]);
                 presets.identities = identities;
                 presets.skills = skills;
-                presets.plugins = plugins;
+                presets.extensions = extensions;
                 presets.keys = keys;
                 presets.model_providers = model_providers;
                 presets.core_templates = core_templates;
@@ -835,12 +835,12 @@
             document.getElementById('instance-name').value = '';
             document.querySelectorAll('input[name="image"]')[0].checked = true;
             
-            createSelections = { identity: null, skills: [], plugins: [] };
+            createSelections = { identity: null, skills: [], extensions: [] };
             currentCreateTab = 'identity';
             
             renderIdentityCards();
             renderSkillsCards();
-            renderPluginsCards();
+            renderExtensionsCards();
             
             document.querySelectorAll('.create-tab').forEach(t => t.classList.remove('active'));
             document.querySelector('.create-tab').classList.add('active');
@@ -907,28 +907,28 @@
             `}).join('');
         }
 
-        function renderPluginsCards() {
-            const container = document.getElementById('plugins-cards');
+        function renderExtensionsCards() {
+            const container = document.getElementById('extensions-cards');
             const searchTerm = document.getElementById('create-search').value.toLowerCase();
-            const filtered = (presets.plugins || []).filter(p => 
-                p.name.toLowerCase().includes(searchTerm) || 
+            const filtered = (presets.extensions || []).filter(p =>
+                p.name.toLowerCase().includes(searchTerm) ||
                 (p.description || '').toLowerCase().includes(searchTerm)
             );
-            
+
             if (!filtered.length) {
-                container.innerHTML = '<div class="empty-state">暂无插件</div>';
+                container.innerHTML = '<div class="empty-state">暂无扩展</div>';
                 return;
             }
-            
-            container.innerHTML = filtered.map(plugin => {
-                const isSelected = createSelections.plugins.includes(plugin.id);
+
+            container.innerHTML = filtered.map(extension => {
+                const isSelected = createSelections.extensions.includes(extension.id);
                 return `
-                <div class="preset-card ${isSelected ? 'selected' : ''}" onclick="togglePluginSelection('${plugin.id}')">
+                <div class="preset-card ${isSelected ? 'selected' : ''}" onclick="toggleExtensionSelection('${extension.id}')">
                     <div class="preset-card-header">
                         <input type="checkbox" class="preset-card-radio" ${isSelected ? 'checked' : ''}>
-                        <span class="preset-card-name">${escapeHtml(plugin.name)}</span>
+                        <span class="preset-card-name">${escapeHtml(extension.name)}</span>
                     </div>
-                    <div class="preset-card-desc">${escapeHtml(plugin.description) || '无描述'}</div>
+                    <div class="preset-card-desc">${escapeHtml(extension.description) || '无描述'}</div>
                 </div>
             `}).join('');
         }
@@ -950,14 +950,14 @@
             updateSelectedItemsDisplay();
         }
 
-        function togglePluginSelection(id) {
-            const idx = createSelections.plugins.indexOf(id);
+        function toggleExtensionSelection(id) {
+            const idx = createSelections.extensions.indexOf(id);
             if (idx >= 0) {
-                createSelections.plugins.splice(idx, 1);
+                createSelections.extensions.splice(idx, 1);
             } else {
-                createSelections.plugins.push(id);
+                createSelections.extensions.push(id);
             }
-            renderPluginsCards();
+            renderExtensionsCards();
             updateSelectedItemsDisplay();
         }
 
@@ -976,9 +976,9 @@
                 if (skill) items.push(`<span class="selected-item">${escapeHtml(skill.name)} <button onclick="event.stopPropagation();toggleSkillSelection('${sid}')">×</button></span>`);
             });
             
-            createSelections.plugins.forEach(pid => {
-                const plugin = (presets.plugins || []).find(p => p.id === pid);
-                if (plugin) items.push(`<span class="selected-item">${escapeHtml(plugin.name)} <button onclick="event.stopPropagation();togglePluginSelection('${pid}')">×</button></span>`);
+            createSelections.extensions.forEach(pid => {
+                const extension = (presets.extensions || []).find(p => p.id === pid);
+                if (extension) items.push(`<span class="selected-item">${escapeHtml(extension.name)} <button onclick="event.stopPropagation();toggleExtensionSelection('${pid}')">×</button></span>`);
             });
             
             container.innerHTML = items.length ? items.join('') : '<span style="color:#999;font-size:12px;">未选择任何项目</span>';
@@ -986,17 +986,17 @@
         }
 
         function clearCreateSelections() {
-            createSelections = { identity: null, skills: [], plugins: [] };
+            createSelections = { identity: null, skills: [], extensions: [] };
             if (currentCreateTab === 'identity') renderIdentityCards();
             else if (currentCreateTab === 'skills') renderSkillsCards();
-            else renderPluginsCards();
+            else renderExtensionsCards();
             updateSelectedItemsDisplay();
         }
 
         function filterCreateItems() {
             if (currentCreateTab === 'identity') renderIdentityCards();
             else if (currentCreateTab === 'skills') renderSkillsCards();
-            else renderPluginsCards();
+            else renderExtensionsCards();
         }
 
         async function createInstance() {
@@ -1013,7 +1013,7 @@
                     image,
                     identity: createSelections.identity,
                     skills: createSelections.skills,
-                    plugins: createSelections.plugins,
+                    plugins: createSelections.extensions,
                     model: document.getElementById('model-select').value || 'minimax/MiniMax-M2.7-highspeed',
                     apiKey: apiKey || null,
                     channels: {}
@@ -1055,7 +1055,7 @@
                 renderModelProviders(currentConfig);
                 renderChannels(currentConfig.channels || {});
                 renderSkillsCheckboxes(currentConfig.agents?.defaults?.skills || []);
-                renderPluginsCheckboxes(currentConfig.plugins?.entries || {});
+                renderExtensionsCheckboxes(currentConfig.plugins?.entries || {});
                 renderWorkspaceFiles();
                 
             } catch (e) {
@@ -1241,14 +1241,14 @@
             `).join('');
         }
         
-        function renderPluginsCheckboxes(enabledPlugins) {
-            const container = document.getElementById('plugins-list');
-            container.innerHTML = presets.plugins.map(plugin => `
+        function renderExtensionsCheckboxes(enabledExtensions) {
+            const container = document.getElementById('extensions-list');
+            container.innerHTML = presets.extensions.map(extension => `
                 <label class="checkbox-item">
-                    <input type="checkbox" value="${plugin.id}" ${enabledPlugins[plugin.id]?.enabled ? 'checked' : ''}>
+                    <input type="checkbox" value="${extension.id}" ${enabledExtensions[extension.id]?.enabled ? 'checked' : ''}>
                     <div class="item-info">
-                        <div class="item-name">${plugin.name}</div>
-                        <div class="item-desc">${plugin.description}</div>
+                        <div class="item-name">${extension.name}</div>
+                        <div class="item-desc">${extension.description}</div>
                     </div>
                 </label>
             `).join('');
@@ -1295,9 +1295,9 @@
                 enabledSkills.push(cb.value);
             });
             
-            const enabledPlugins = {};
-            document.querySelectorAll('#plugins-list input:checked').forEach(cb => {
-                enabledPlugins[cb.value] = { enabled: true };
+            const enabledExtensions = {};
+            document.querySelectorAll('#extensions-list input:checked').forEach(cb => {
+                enabledExtensions[cb.value] = { enabled: true };
             });
             
             const envVars = {};
@@ -1417,8 +1417,8 @@
                 },
                 channels: channels,
                 plugins: {
-                    allow: Object.keys(enabledPlugins),
-                    entries: enabledPlugins
+                    allow: Object.keys(enabledExtensions),
+                    entries: enabledExtensions
                 }
             };
             
