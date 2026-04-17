@@ -11,7 +11,7 @@
     },
     "auth": {
       "mode": "token",
-      "token": "3bdb709674388b23127deb8fa7009817"
+      "token": "b19bf70870ea23123637d0732c4453ad"
     }
   },
   "logging": {
@@ -19,7 +19,7 @@
   },
   "plugins": {
     "allow": [
-      "weixin"
+      "openclaw-weixin"
     ],
     "load": {
       "paths": [

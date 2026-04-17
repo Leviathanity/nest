@@ -247,7 +247,18 @@ def apply_extensions_to_instance(instance_dir: Path, extension_ids: list, keys_d
         if not src_dir.exists():
             logger.warning(f"Extension preset not found: {extension_id}")
             continue
-        dst_dir = extensions_dir / extension_id
+        
+        manifest_file = src_dir / "openclaw.plugin.json"
+        if manifest_file.exists():
+            try:
+                manifest = json.loads(manifest_file.read_text())
+                actual_plugin_id = manifest.get("id", extension_id)
+            except Exception:
+                actual_plugin_id = extension_id
+        else:
+            actual_plugin_id = extension_id
+        
+        dst_dir = extensions_dir / actual_plugin_id
         if dst_dir.exists():
             shutil.rmtree(dst_dir)
         shutil.copytree(src_dir, dst_dir)

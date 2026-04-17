@@ -11,7 +11,7 @@
     },
     "auth": {
       "mode": "token",
-      "token": "3bdb709674388b23127deb8fa7009817"
+      "token": "b19bf70870ea23123637d0732c4453ad"
     }
   },
   "logging": {
@@ -19,7 +19,7 @@
   },
   "plugins": {
     "allow": [
-      "weixin",
+      "openclaw-weixin",
       "minimax",
       "memory-core"
     ],
@@ -75,6 +75,6 @@
   },
   "meta": {
     "lastTouchedVersion": "2026.4.14-beta.1",
-    "lastTouchedAt": "2026-04-17T08:13:00.293Z"
+    "lastTouchedAt": "2026-04-17T08:37:17.269Z"
   }
 }
