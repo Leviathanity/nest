@@ -248,10 +248,14 @@ def apply_extensions_to_instance(instance_dir: Path, extension_ids: list, keys_d
             logger.warning(f"Extension preset not found: {extension_id}")
             continue
         dst_dir = extensions_dir / extension_id
-        dst_dir.mkdir(parents=True, exist_ok=True)
-        for f in src_dir.iterdir():
-            if f.is_file():
-                (dst_dir / f.name).write_text(f.read_text(encoding="utf-8"), encoding="utf-8")
+        if dst_dir.exists():
+            shutil.rmtree(dst_dir)
+        shutil.copytree(src_dir, dst_dir)
+        for root, dirs, files in os.walk(dst_dir):
+            for d in dirs:
+                os.chmod(os.path.join(root, d), 0o755)
+            for f in files:
+                os.chmod(os.path.join(root, f), 0o644)
 
 def get_next_instance_id() -> int:
     max_id = 0
