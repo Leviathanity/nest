@@ -234,10 +234,9 @@ def apply_skills_to_instance(instance_dir: Path, skill_ids: list):
             logger.warning(f"Skill preset not found: {skill_id}")
             continue
         dst_dir = skills_dir / skill_id
-        dst_dir.mkdir(parents=True, exist_ok=True)
-        for f in src_dir.iterdir():
-            if f.is_file():
-                (dst_dir / f.name).write_text(f.read_text(encoding="utf-8"), encoding="utf-8")
+        if dst_dir.exists():
+            shutil.rmtree(dst_dir)
+        shutil.copytree(src_dir, dst_dir)
 
 def apply_plugins_to_instance(instance_dir: Path, plugin_ids: list, keys_data: dict):
     """应用插件到实例"""
