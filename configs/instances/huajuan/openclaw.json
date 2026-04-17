@@ -1,0 +1,69 @@
+{
+  "gateway": {
+    "mode": "local",
+    "bind": "lan",
+    "controlUi": {
+      "dangerouslyDisableDeviceAuth": true,
+      "allowInsecureAuth": true,
+      "allowedOrigins": [
+        "*"
+      ]
+    },
+    "auth": {
+      "mode": "token",
+      "token": "8c76d8f4374ee94ce6bbc36ee3f6ecc3"
+    }
+  },
+  "logging": {
+    "level": "info"
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "minimax/MiniMax-M2.7-highspeed"
+      }
+    }
+  },
+  "env": {
+    "MINIMAX_API_KEY": "sk-cp-5jZF-MMqsZZn0-2qq1_kaAm7au1VZS6KJcs-qo4cAK6aEAsZRnWrtSPRo7_dTVntjQ9EeaEnbHrbINketa5-l4WAPjas0Nusykjq9NQLoLwkozUql4FuxvU"
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "minimax": {
+        "baseUrl": "https://api.minimaxi.com/anthropic",
+        "apiKey": "${MINIMAX_API_KEY}",
+        "api": "anthropic-messages",
+        "models": [
+          {
+            "id": "MiniMax-M2.7-highspeed",
+            "name": "MiniMax M2.7 HighSpeed",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 15,
+              "output": 60,
+              "cacheRead": 2,
+              "cacheWrite": 10
+            },
+            "contextWindow": 200000,
+            "maxTokens": 8192
+          }
+        ]
+      }
+    }
+  },
+  "plugins": {
+    "entries": {
+      "minimax": {
+        "enabled": true
+      }
+    }
+  },
+  "meta": {
+    "lastTouchedVersion": "2026.4.14-beta.1",
+    "lastTouchedAt": "2026-04-17T06:55:37.297Z"
+  }
+}
