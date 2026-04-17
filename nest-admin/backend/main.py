@@ -378,6 +378,18 @@ async def create_instance(data: InstanceCreateRequest):
 
     return {"name": name, "instance_id": instance_id, "status": "created"}
 
+def get_plugin_id_from_manifest(extension_id: str) -> str:
+    """Get actual plugin ID from manifest file"""
+    plugin_dir = PRESETS_DIR / "extensions" / extension_id
+    manifest_file = plugin_dir / "openclaw.plugin.json"
+    if manifest_file.exists():
+        try:
+            manifest = json.loads(manifest_file.read_text())
+            return manifest.get("id", extension_id)
+        except:
+            pass
+    return extension_id
+
 def build_instance_config(instance_id: int, name: str, token: str, data: InstanceCreateRequest, keys_data: dict) -> dict:
     """构建实例的 openclaw.json"""
     config = {
@@ -415,7 +427,7 @@ def build_instance_config(instance_id: int, name: str, token: str, data: Instanc
 
     if data.plugins:
         config["plugins"] = {
-            "allow": data.plugins,
+            "allow": [get_plugin_id_from_manifest(p) for p in data.plugins],
             "load": {"paths": ["/app/extensions", "/root/.openclaw/extensions"]}
         }
 
