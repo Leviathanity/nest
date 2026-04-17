@@ -263,6 +263,7 @@ def apply_extensions_to_instance(instance_dir: Path, extension_ids: list, keys_d
             shutil.rmtree(dst_dir)
         shutil.copytree(src_dir, dst_dir)
         for root, dirs, files in os.walk(dst_dir):
+            os.chmod(root, 0o755)
             for d in dirs:
                 os.chmod(os.path.join(root, d), 0o755)
             for f in files:

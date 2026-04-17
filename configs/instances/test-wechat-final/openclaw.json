@@ -11,7 +11,7 @@
     },
     "auth": {
       "mode": "token",
-      "token": "b19bf70870ea23123637d0732c4453ad"
+      "token": "99206729e034570ae3a9efb9885254ee"
     }
   },
   "logging": {
@@ -19,13 +19,20 @@
   },
   "plugins": {
     "allow": [
-      "openclaw-weixin"
+      "openclaw-weixin",
+      "minimax",
+      "memory-core"
     ],
     "load": {
       "paths": [
         "/app/extensions",
         "/root/.openclaw/extensions"
       ]
+    },
+    "entries": {
+      "minimax": {
+        "enabled": true
+      }
     }
   },
   "agents": {
@@ -65,5 +72,9 @@
         ]
       }
     }
+  },
+  "meta": {
+    "lastTouchedVersion": "2026.4.14-beta.1",
+    "lastTouchedAt": "2026-04-17T10:14:16.590Z"
   }
 }
