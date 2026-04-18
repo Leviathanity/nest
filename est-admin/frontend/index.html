@@ -1,692 +1,1350 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nest 管理面板</title>
+    <title>Nest Admin - OpenClaw Cluster Manager</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: #1a1a2e;
-            color: #eee;
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        h1 {
-            font-size: 28px;
-            margin-bottom: 20px;
-            color: #00d4ff;
-        }
-        h2 {
-            font-size: 20px;
-            margin: 20px 0 10px;
-            color: #00d4ff;
-        }
-        .card {
-            background: #16213e;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .header-actions {
-            display: flex;
-            gap: 10px;
-        }
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background 0.2s;
-        }
-        .btn-primary {
-            background: #00d4ff;
-            color: #1a1a2e;
-        }
-        .btn-primary:hover {
-            background: #00b8e6;
-        }
-        .btn-success {
-            background: #00c853;
-            color: #fff;
-        }
-        .btn-success:hover {
-            background: #00a844;
-        }
-        .btn-danger {
-            background: #ff5252;
-            color: #fff;
-        }
-        .btn-danger:hover {
-            background: #e04848;
-        }
-        .btn-warning {
-            background: #ff9800;
-            color: #fff;
-        }
-        .btn-warning:hover {
-            background: #e08800;
-        }
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        .instance-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 15px;
-        }
-        .instance-card {
-            background: #0f3460;
-            border-radius: 6px;
-            padding: 15px;
-            border-left: 4px solid #00d4ff;
-        }
-        .instance-card.stopped {
-            border-left-color: #ff5252;
-        }
-        .instance-card.running {
-            border-left-color: #00c853;
-        }
-        .instance-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .instance-name {
-            font-size: 16px;
-            font-weight: bold;
-        }
-        .status-badge {
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            text-transform: uppercase;
-        }
-        .status-healthy, .status-running {
-            background: #00c853;
-            color: #fff;
-        }
-        .status-stopped {
-            background: #ff5252;
-            color: #fff;
-        }
-        .instance-info {
-            font-size: 13px;
-            color: #aaa;
-            margin-bottom: 10px;
-        }
-        .instance-actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        .instance-actions .btn {
-            padding: 6px 12px;
-            font-size: 12px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 14px;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #333;
-            border-radius: 4px;
-            background: #0f3460;
-            color: #eee;
-            font-size: 14px;
-        }
-        .form-group input:focus {
-            outline: none;
-            border-color: #00d4ff;
-        }
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.7);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .modal.active {
-            display: flex;
-        }
-        .modal-content {
-            background: #16213e;
-            border-radius: 8px;
-            padding: 25px;
-            min-width: 400px;
-            max-width: 600px;
-        }
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 15px;
-        }
-        .modal-header h3 {
-            color: #00d4ff;
-        }
-        .close-btn {
-            background: none;
-            border: none;
-            color: #aaa;
-            font-size: 24px;
-            cursor: pointer;
-        }
-        .close-btn:hover {
-            color: #fff;
-        }
-        .config-editor {
-            width: 100%;
-            min-height: 300px;
-            padding: 10px;
-            border: 1px solid #333;
-            border-radius: 4px;
-            background: #0f3460;
-            color: #eee;
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 13px;
-            resize: vertical;
-        }
-        .logs-container {
-            background: #0a0a1a;
-            border-radius: 4px;
-            padding: 15px;
-            max-height: 400px;
-            overflow-y: auto;
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 12px;
-            white-space: pre-wrap;
-            word-break: break-all;
-        }
-        .webhook-config {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-        .webhook-config input {
-            flex: 1;
-            padding: 8px;
-            border: 1px solid #333;
-            border-radius: 4px;
-            background: #0f3460;
-            color: #eee;
-        }
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #00d4ff;
-        }
-        .error {
-            color: #ff5252;
-            padding: 10px;
-            border-radius: 4px;
-            background: rgba(255,82,82,0.1);
-            margin-bottom: 10px;
-        }
-        .success {
-            color: #00c853;
-            padding: 10px;
-            border-radius: 4px;
-            background: rgba(0,200,83,0.1);
-            margin-bottom: 10px;
-        }
-        .tab-container {
-            margin-bottom: 20px;
-        }
-        .tabs {
-            display: flex;
-            gap: 5px;
-            border-bottom: 1px solid #333;
-            margin-bottom: 15px;
-        }
-        .tab {
-            padding: 10px 20px;
-            background: none;
-            border: none;
-            color: #aaa;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        .tab.active {
-            color: #00d4ff;
-            border-bottom: 2px solid #00d4ff;
-        }
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; color: #333; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        
+        .header { background: #001529; color: #fff; padding: 16px 24px; margin-bottom: 24px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 20px; font-weight: 600; }
+        .header .subtitle { color: #ffffff99; font-size: 14px; }
+        
+        .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 16px; overflow: hidden; }
+        .card-header { padding: 16px 20px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+        .card-header h2 { font-size: 16px; font-weight: 600; }
+        .card-body { padding: 20px; }
+        
+        .tabs { display: flex; gap: 4px; background: #f0f0f0; padding: 4px; border-radius: 6px; margin-bottom: 16px; }
+        .tab { padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; border: none; background: transparent; }
+        .tab.active { background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .tab:hover:not(.active) { background: #e6e6e6; }
+
+        .tab-btn { padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; border: none; background: transparent; }
+        .tab-btn.active { background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .tab-btn:hover:not(.active) { background: #e6e6e6; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .instance-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+        
+        .instance-card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 16px; }
+        .instance-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .instance-name { font-size: 16px; font-weight: 600; }
+        .instance-status { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
+        .status-running { background: #f6ffed; color: #52c41a; }
+        .status-stopped { background: #fff1f0; color: #ff4d4f; }
+        .status-healthy { background: #e6f7ff; color: #1890ff; }
+        .status-other { background: #f0f0f0; color: #666; }
+        
+        .instance-info { font-size: 13px; color: #666; margin-bottom: 12px; }
+        .instance-info div { margin-bottom: 4px; }
+        .instance-info span { color: #333; }
+        
+        .instance-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        
+        button { padding: 6px 12px; border-radius: 4px; border: 1px solid #d9d9d9; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+        button:hover { border-color: #1890ff; color: #1890ff; }
+        button.primary { background: #1890ff; color: #fff; border-color: #1890ff; }
+        button.primary:hover { background: #40a9ff; border-color: #40a9ff; }
+        button.danger { color: #ff4d4f; border-color: #ff4d4f; }
+        button.danger:hover { background: #ff4d4f; color: #fff; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; margin-bottom: 4px; font-size: 13px; color: #666; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; }
+        .form-group textarea { min-height: 300px; font-family: 'Monaco', 'Menlo', monospace; resize: vertical; }
+        
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; }
+        .modal.show { display: block; }
+        .modal.show .modal-content { display: block; }
+        .modal-content { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; border-radius: 8px; padding: 24px; width: 95%; max-width: 1000px; max-height: 85vh; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        
+        .stack-actions { display: flex; gap: 8px; margin-bottom: 16px; }
+        
+        .log-viewer { background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 4px; font-family: 'Monaco', 'Menlo', monospace; font-size: 12px; max-height: 400px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+        
+        .empty-state { text-align: center; padding: 40px; color: #999; }
+        
+        .alert { padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; }
+        .alert-success { background: #f6ffed; border: 1px solid #b7eb8f; color: #52c41a; }
+        .alert-error { background: #fff1f0; border: 1px solid #ffa39e; color: #ff4d4f; }
+        
+        .loading { text-align: center; padding: 40px; color: #999; }
+        
+        .actions-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+        
+        /* Interactive Config Modal */
+        .config-modal .modal-content { width: 95%; max-width: 1100px; }
+        .config-tabs { display: flex; gap: 4px; background: #f0f0f0; padding: 4px; border-radius: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+        .config-tab { padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; border: none; background: transparent; }
+        .config-tab.active { background: #1890ff; color: #fff; }
+        .config-tab:hover:not(.active) { background: #e6e6e6; }
+        .config-tab-content { flex: 1; overflow-y: auto; min-height: 300px; }
+        .config-panel { padding: 4px; }
+        
+        .section-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #333; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; }
+        
+        .checkbox-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+        .checkbox-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 12px; background: #fafafa; border-radius: 4px; border: 1px solid #f0f0f0; cursor: pointer; transition: all 0.2s; }
+        .checkbox-item:hover { border-color: #1890ff; }
+        .checkbox-item input { margin-top: 2px; }
+        .checkbox-item .item-info { flex: 1; }
+        .checkbox-item .item-name { font-size: 13px; font-weight: 500; }
+        .checkbox-item .item-desc { font-size: 11px; color: #999; }
+        
+        .template-selector { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+        .template-btn { padding: 8px 16px; border-radius: 4px; border: 1px solid #d9d9d9; cursor: pointer; font-size: 13px; background: #fff; }
+        .template-btn:hover { border-color: #1890ff; }
+        .template-btn.active { background: #1890ff; color: #fff; border-color: #1890ff; }
+        
+        .memory-config { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .memory-config .form-group label { font-weight: 500; }
+        
+        .cluster-config { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .cluster-config .form-group label { font-weight: 500; }
+        
+        .json-editor { min-height: 200px; font-family: 'Monaco', 'Menlo', monospace; font-size: 12px; background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 4px; }
+        
+        .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; padding-top: 16px; border-top: 1px solid #f0f0f0; }
+        
+        .skill-tag { display: inline-block; padding: 2px 8px; background: #e6f7ff; color: #1890ff; border-radius: 4px; font-size: 12px; margin-right: 4px; margin-bottom: 4px; }
+        
+        /* Model Provider Styles */
+        .provider-card { background: #fafafa; border: 1px solid #e8e8e8; border-radius: 6px; padding: 12px; margin-bottom: 12px; }
+        .provider-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .provider-name { font-weight: 600; font-size: 14px; }
+        .provider-base-url { font-size: 11px; color: #999; margin-left: auto; }
+        .provider-models { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+        .provider-model-btn { padding: 4px 12px; border-radius: 4px; border: 1px solid #d9d9d9; cursor: pointer; font-size: 12px; background: #fff; }
+        .provider-model-btn.selected { background: #1890ff; color: #fff; border-color: #1890ff; }
+        .api-key-row { display: flex; gap: 8px; margin-bottom: 8px; }
+        .api-key-row input { flex: 1; font-size: 12px; padding: 6px 10px; }
+        
+        /* Channel Styles */
+        .channel-card { background: #fafafa; border: 1px solid #e8e8e8; border-radius: 6px; padding: 12px; margin-bottom: 12px; }
+        .channel-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .channel-name { font-weight: 600; font-size: 14px; }
+        .channel-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .channel-fields .form-group { margin-bottom: 0; }
+        
+        /* Workspace Files */
+        .workspace-file-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+        .workspace-file-btn { padding: 8px 16px; border-radius: 4px; border: 1px solid #d9d9d9; cursor: pointer; font-size: 13px; background: #fff; }
+        .workspace-file-btn:hover { border-color: #1890ff; }
+        .workspace-file-btn.active { background: #1890ff; color: #fff; border-color: #1890ff; }
+        
+        .env-vars { background: #fafafa; border-radius: 4px; padding: 12px; margin-bottom: 12px; }
+        .env-var-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+        .env-var-row input { flex: 1; font-size: 12px; padding: 6px 10px; }
+        .env-var-row .env-key { font-weight: 500; min-width: 150px; }
+        .env-var-row button.remove { color: #ff4d4f; border-color: #ff4d4f; padding: 4px 8px; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🐛 Nest 管理面板</h1>
-            <div class="header-actions">
-                <button class="btn btn-primary" onclick="showAddInstanceModal()">+ 添加实例</button>
-                <button class="btn btn-success" onclick="startStack()">▶ 启动集群</button>
-                <button class="btn btn-danger" onclick="stopStack()">■ 停止集群</button>
-                <button class="btn btn-primary" onclick="refreshAll()">↻ 刷新</button>
+            <div>
+                <h1>Nest Admin</h1>
+                <div class="subtitle">OpenClaw Cluster Manager</div>
+            </div>
+            <div>
+                <span id="serverTime" style="font-size:12px;opacity:0.7;"></span>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" data-tab="instances">实例列表</button>
+            <button class="tab" data-tab="base-config">基础配置</button>
+            <button class="tab" data-tab="settings">设置</button>
+            <button class="tab-btn" data-tab="keys">预制Keys</button>
+        </div>
+        
+        <div id="tab-instances" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Stack 管理</h2>
+                </div>
+                <div class="card-body">
+                    <div class="stack-actions">
+                        <button class="primary" onclick="startStack()">启动 Stack</button>
+                        <button class="danger" onclick="stopStack()">停止 Stack</button>
+                        <button onclick="refreshAll()">刷新全部</button>
+                    </div>
+                    <div id="stack-status"></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h2>实例管理</h2>
+                    <div style="display:flex;gap:8px;">
+                        <button class="primary" onclick="showAddModal()">添加实例</button>
+                        <button onclick="showCreateModal()">创建实例</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="instances-list" class="instance-grid"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="tab-base-config" class="tab-content" style="display:none;">
+            <div class="card">
+                <div class="card-header">
+                    <h2>基础配置</h2>
+                    <button class="primary" onclick="saveBaseConfig()">保存</button>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <textarea id="base-config-editor"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="tab-settings" class="tab-content" style="display:none;">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Webhook 设置</h2>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>Webhook URL</label>
+                        <input type="text" id="webhook-url" placeholder="https://your-webhook-endpoint.com/notify">
+                    </div>
+                    <button class="primary" onclick="saveWebhook()">保存</button>
+                    <button onclick="testWebhook()">测试</button>
+                </div>
             </div>
         </div>
 
-        <div id="message"></div>
-
-        <div class="card">
-            <h2>实例列表</h2>
-            <div class="tab-container">
-                <div class="tabs">
-                    <button class="tab active" onclick="switchTab('instances')">全部实例</button>
-                    <button class="tab" onclick="switchTab('config')">基础配置</button>
-                    <button class="tab" onclick="switchTab('logs')">日志</button>
-                    <button class="tab" onclick="switchTab('webhook')">Webhook</button>
+        <div id="tab-keys" class="tab-content" style="display:none;">
+            <div class="card">
+                <div class="card-header">
+                    <h2>预制 Keys 管理</h2>
                 </div>
-                
-                <div id="tab-instances" class="tab-content active">
-                    <div id="instances-list" class="instance-grid">
-                        <div class="loading">正在加载实例...</div>
-                    </div>
-                </div>
-
-                <div id="tab-config" class="tab-content">
-                    <div class="form-group">
-                        <label>基础配置 (JSON)</label>
-                        <textarea id="base-config-editor" class="config-editor"></textarea>
-                    </div>
-                    <button class="btn btn-primary" onclick="saveBaseConfig()">保存基础配置</button>
-                    <button class="btn btn-success" onclick="loadBaseConfig()">加载基础配置</button>
-                </div>
-
-                <div id="tab-logs" class="tab-content">
-                    <div class="form-group">
-                        <label>选择实例查看日志</label>
-                        <select id="log-instance" style="width:100%;padding:10px;background:#0f3460;color:#eee;border:1px solid #333;border-radius:4px;">
-<option value="">全部实例</option>
-                        </select>
-                    </div>
-                    <button class="btn btn-primary" onclick="loadLogs()">加载日志</button>
-                    <div id="logs-container" class="logs-container" style="margin-top:15px;">未加载日志</div>
-                </div>
-
-                <div id="tab-webhook" class="tab-content">
-                    <div class="card" style="background:#0f3460;">
+                <div class="card-body">
+                    <form id="keys-form">
                         <div class="form-group">
-                            <label>Webhook 地址</label>
-                            <div class="webhook-config">
-                                <input type="text" id="webhook-url" placeholder="https://your-webhook-endpoint.com/notify">
-                                <button class="btn btn-primary" onclick="saveWebhook()">保存</button>
-                            </div>
+                            <label>MiniMax API Key</label>
+                            <input type="password" id="key-minimax-apikey" placeholder="sk-...">
                         </div>
-                        <p style="font-size:12px;color:#aaa;margin-top:10px;">
-                            配置 Webhook URL 以接收实例状态变更通知。
-                        </p>
-                    </div>
+                        <div class="form-group">
+                            <label>飞书 App ID</label>
+                            <input type="text" id="key-feishu-appid" placeholder="cli_...">
+                        </div>
+                        <div class="form-group">
+                            <label>飞书 App Secret</label>
+                            <input type="password" id="key-feishu-appsecret">
+                        </div>
+                        <div class="form-group">
+                            <label>默认 Provider</label>
+                            <select id="key-default-provider">
+                                <option value="minimax">MiniMax</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="primary">保存</button>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
-
-    <div id="add-modal" class="modal">
+    
+    <!-- Add Instance Modal -->
+    <div id="modal-add" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h3>添加新实例</h3>
-                <button class="close-btn" onclick="closeModal('add-modal')">&times;</button>
+                <button class="modal-close" onclick="closeModal('add')">&times;</button>
             </div>
             <div class="form-group">
                 <label>实例名称</label>
-                <input type="text" id="new-instance-name" placeholder="例如：openclaw-4">
+                <input type="text" id="new-instance-name" placeholder="openclaw-4">
             </div>
-            <div class="form-group">
-                <label>镜像类型</label>
-                <select id="new-instance-gpu" style="width:100%;padding:10px;background:#0f3460;color:#eee;border:1px solid #333;border-radius:4px;">
-                    <option value="true">GPU (openclaw:pure-gpu)</option>
-                    <option value="false">CPU (openclaw:pure-cpu)</option>
-                </select>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button onclick="closeModal('add')">取消</button>
+                <button class="primary" onclick="addInstance()">添加</button>
             </div>
-            <button class="btn btn-primary" onclick="addInstance()">创建实例</button>
         </div>
     </div>
 
-    <div id="edit-modal" class="modal">
+    <!-- Create Instance Modal -->
+    <div id="modal-create" class="modal">
+        <div class="modal-content" style="max-width:700px;">
+            <div class="modal-header">
+                <h3>创建新实例</h3>
+                <button class="modal-close" onclick="closeModal('create')">&times;</button>
+            </div>
+
+            <div class="config-tabs" style="margin-bottom:15px;">
+                <button class="config-tab active" data-create-tab="basic">基本信息</button>
+                <button class="config-tab" data-create-tab="skills">技能</button>
+                <button class="config-tab" data-create-tab="plugins">插件</button>
+                <button class="config-tab" data-create-tab="channels">渠道</button>
+            </div>
+
+            <!-- Basic Tab -->
+            <div id="create-tab-basic" class="config-panel">
+                <div class="form-group">
+                    <label>实例名称</label>
+                    <input type="text" id="instance-name" placeholder="my-openclaw" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;">
+                </div>
+                <div class="form-group">
+                    <label>镜像</label>
+                    <div style="display:flex;gap:15px;">
+                        <label><input type="radio" name="image" value="openclaw" checked> OpenClaw</label>
+                        <label><input type="radio" name="image" value="openclaw-dev"> OpenClaw Dev</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>身份模板</label>
+                    <select id="instance-identity" style="width:100%;padding:10px;background:#fff;border:1px solid #ddd;border-radius:4px;">
+                        <option value="empty">空白</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Skills Tab -->
+            <div id="create-tab-skills" class="config-panel" style="display:none;">
+                <div class="form-group">
+                    <label>预置技能 (可多选)</label>
+                    <div id="skills-checkboxes" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:300px;overflow-y:auto;padding:10px;background:#f5f5f5;border-radius:4px;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Plugins Tab -->
+            <div id="create-tab-plugins" class="config-panel" style="display:none;">
+                <div class="form-group">
+                    <label>预置插件</label>
+                    <div style="display:flex;flex-direction:column;gap:10px;padding:10px;background:#f5f5f5;border-radius:4px;">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                            <input type="checkbox" id="plugin-feishu">
+                            <span>飞书</span>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                            <input type="checkbox" id="plugin-weixin">
+                            <span>企业微信 (二维码配对)</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Channels Tab -->
+            <div id="create-tab-channels" class="config-panel" style="display:none;">
+                <div class="form-group">
+                    <label>启用渠道</label>
+                    <div style="display:flex;flex-direction:column;gap:10px;padding:10px;background:#f5f5f5;border-radius:4px;">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                            <input type="checkbox" id="channel-feishu">
+                            <span>飞书</span>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                            <input type="checkbox" id="channel-weixin">
+                            <span>微信</span>
+                        </label>
+                    </div>
+                </div>
+                <div style="margin-top:15px;padding:12px;background:#fffbe6;border:1px solid #ffe58f;border-radius:4px;font-size:13px;color:#8c8c8c;">
+                    💡 提示：请在创建实例后，编辑实例配置填入渠道凭证
+                </div>
+            </div>
+
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
+                <button onclick="closeModal('create')" style="padding:10px 20px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer;">取消</button>
+                <button onclick="createInstance()" class="primary" style="padding:10px 20px;background:#1890ff;color:#fff;border:none;border-radius:4px;cursor:pointer;">创建</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Interactive Instance Config Modal -->
+    <div id="modal-config" class="modal config-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="edit-modal-title">编辑实例配置</h3>
-                <button class="close-btn" onclick="closeModal('edit-modal')">&times;</button>
+                <h3 id="config-title">实例配置</h3>
+                <button class="modal-close" onclick="closeModal('config')">&times;</button>
             </div>
-            <div class="form-group">
-                <label>配置 (JSON)</label>
-                <textarea id="instance-config-editor" class="config-editor"></textarea>
+            
+            <div class="config-tabs">
+                <button class="config-tab active" data-config-tab="basic">基本信息</button>
+                <button class="config-tab" data-config-tab="model">模型配置</button>
+                <button class="config-tab" data-config-tab="channel">渠道</button>
+                <button class="config-tab" data-config-tab="skills">技能</button>
+                <button class="config-tab" data-config-tab="plugins">插件</button>
+                <button class="config-tab" data-config-tab="workspace">工作区</button>
+                <button class="config-tab" data-config-tab="json">JSON</button>
             </div>
-            <button class="btn btn-primary" onclick="saveInstanceConfig()">保存配置</button>
-            <button class="btn" style="background:#666;color:#fff;" onclick="closeModal('edit-modal')">取消</button>
+            
+            <div class="config-tab-content">
+                <!-- Basic Tab -->
+                <div id="config-tab-basic" class="config-panel">
+                    <div class="section-title">集群信息</div>
+                    <div class="cluster-config">
+                        <div class="form-group">
+                            <label>实例ID (容器内)</label>
+                            <input type="number" id="cfg-instance-id" value="1">
+                        </div>
+                        <div class="form-group">
+                            <label>实例名称 (OpenClaw内部名称，重启后生效)</label>
+                            <input type="text" id="cfg-instance-name">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>描述</label>
+                        <input type="text" id="cfg-description" placeholder="实例描述">
+                    </div>
+                    
+                    <div class="section-title">访问令牌</div>
+                    <div id="cfg-token-display" style="margin-bottom:12px;display:flex;gap:8px;align-items:center;">
+                        <input type="text" id="cfg-gateway-token" readonly style="flex:1;font-family:monospace;font-size:12px;padding:8px;">
+                        <button onclick="copyToken()">复制</button>
+                        <button onclick="regenerateToken()">重新生成</button>
+                    </div>
+                    <div style="font-size:12px;color:#888;margin-bottom:12px;">
+                        访问控制台时需要此令牌：<span id="cfg-console-url"></span>
+                    </div>
+                    
+                    <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+                        <input type="checkbox" id="cfg-disable-device-auth">
+                        <label for="cfg-disable-device-auth" style="margin:0;">跳过设备配对审批 (dangerouslyDisableDeviceAuth)</label>
+                    </div>
+                    <div style="font-size:12px;color:#888;margin-bottom:12px;">
+                        启用后，控制台可立即访问，无需 OpenClaw CLI 配对审批。适用于内网环境。
+                    </div>
+                    
+                    <div style="margin:16px 0;padding:12px;border:1px solid #ddd;border-radius:8px;">
+                        <div style="margin-bottom:8px;">配对状态</div>
+                        <button onclick="approvePairing()" id="btn-approve-pairing" style="background:#28a745;color:#fff;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;">
+                            批准待连接设备
+                        </button>
+                        <div id="pairing-status" style="margin-top:8px;font-size:12px;color:#666;"></div>
+                    </div>
+                    
+                    <div class="section-title">日志级别</div>
+                    <div class="form-group">
+                        <select id="cfg-log-level">
+                            <option value="debug">Debug</option>
+                            <option value="info">Info</option>
+                            <option value="warn">Warn</option>
+                            <option value="error">Error</option>
+                        </select>
+                    </div>
+                    <div style="font-size:12px;color:#888;margin-top:8px;">注意: 修改配置后需要重启实例才能应用更改</div>
+                </div>
+                
+                <!-- Model Tab -->
+                <div id="config-tab-model" class="config-panel" style="display:none;">
+                    <div class="section-title">API 环境变量</div>
+                    <div id="env-vars" class="env-vars"></div>
+                    <button onclick="addEnvVar()" style="margin-bottom:16px;">+ 添加环境变量</button>
+                    
+                    <div class="section-title">模型供应商 (点击选择模型)</div>
+                    <div id="model-providers-list"></div>
+                </div>
+                
+                <!-- Channel Tab -->
+                <div id="config-tab-channel" class="config-panel" style="display:none;">
+                    <div class="section-title">消息渠道配置</div>
+                    <div id="channels-list"></div>
+                </div>
+                
+                <!-- Skills Tab -->
+                <div id="config-tab-skills" class="config-panel" style="display:none;">
+                    <div class="section-title">选择启用的技能</div>
+                    <div id="skills-list" class="checkbox-grid"></div>
+                </div>
+                
+                <!-- Plugins Tab -->
+                <div id="config-tab-plugins" class="config-panel" style="display:none;">
+                    <div class="section-title">选择启用的插件</div>
+                    <div id="plugins-list" class="checkbox-grid"></div>
+                </div>
+                
+                <!-- Workspace Files Tab -->
+                <div id="config-tab-workspace" class="config-panel" style="display:none;">
+                    <div class="section-title">核心工作区文件</div>
+                    <div id="workspace-file-list" class="workspace-file-list"></div>
+                    <div id="workspace-editor" style="display:none;">
+                        <div class="form-group">
+                            <label id="workspace-file-name">文件名</label>
+                            <textarea id="cfg-workspace-content" class="json-editor" style="min-height:300px;" placeholder="编辑文件内容..."></textarea>
+                        </div>
+                        <button class="primary" onclick="saveWorkspaceFile()">保存文件</button>
+                    </div>
+                </div>
+                
+                <!-- JSON Tab -->
+                <div id="config-tab-json" class="config-panel" style="display:none;">
+                    <div class="section-title">完整配置 (JSON)</div>
+                    <div class="form-group">
+                        <textarea id="cfg-json" class="json-editor" placeholder="JSON 配置..."></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button onclick="closeModal('config')">取消</button>
+                <button class="primary" onclick="saveFullConfig()">保存配置</button>
+            </div>
         </div>
     </div>
-
-    <div id="logs-modal" class="modal">
-        <div class="modal-content" style="min-width:800px;">
+    
+    <!-- Logs Modal -->
+    <div id="modal-logs" class="modal">
+        <div class="modal-content" style="max-width:900px;">
             <div class="modal-header">
-                <h3 id="logs-modal-title">实例日志</h3>
-                <button class="close-btn" onclick="closeModal('logs-modal')">&times;</button>
+                <h3 id="logs-title">日志</h3>
+                <button class="modal-close" onclick="closeModal('logs')">&times;</button>
             </div>
-            <div class="logs-container" id="modal-logs" style="max-height:500px;">Loading logs...</div>
+            <div class="log-viewer" id="log-content"></div>
+            <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end;">
+                <button onclick="loadLogs()">刷新</button>
+                <button onclick="closeModal('logs')">关闭</button>
+            </div>
         </div>
     </div>
 
     <script>
-        const API_BASE = '';
-        let currentEditInstance = null;
-        let instances = [];
-
-        async function api(endpoint, options = {}) {
+        const API_BASE = 'http://192.168.2.118:8080';
+        let currentInstance = null;
+        let presets = { skills: [], plugins: [], core_templates: [], model_providers: [], workspace_files: [], channels: [] };
+        let currentConfig = {};
+        let currentWorkspaceFile = null;
+        let selectedModels = {};
+        
+        async function api(method, path, body) {
+            const opts = { method, headers: {} };
+            if (body) {
+                opts.headers['Content-Type'] = 'application/json';
+                opts.body = JSON.stringify(body);
+            }
+            const res = await fetch(API_BASE + path, opts);
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({message: res.statusText}));
+                throw new Error(err.message || 'Request failed');
+            }
+            return res.json();
+        }
+        
+        async function loadPresets() {
             try {
-                const response = await fetch(`${API_BASE}${endpoint}`, options);
-                if (!response.ok) {
-                    const error = await response.text();
-                    throw new Error(error || response.statusText);
-                }
-                return await response.json();
-            } catch (error) {
-                showMessage(error.message, 'error');
-                throw error;
+                const [identities, skills, plugins, keys, model_providers, core_templates, workspace_files, channels] = await Promise.all([
+                    api('GET', '/api/presets/identities'),
+                    api('GET', '/api/presets/skills'),
+                    api('GET', '/api/presets/plugins'),
+                    api('GET', '/api/presets/keys'),
+                    api('GET', '/api/presets/model-providers'),
+                    api('GET', '/api/presets/core-templates'),
+                    api('GET', '/api/presets/workspace-files'),
+                    api('GET', '/api/presets/channels')
+                ]);
+                presets.identities = identities;
+                presets.skills = skills;
+                presets.plugins = plugins;
+                presets.keys = keys;
+                presets.model_providers = model_providers;
+                presets.core_templates = core_templates;
+                presets.workspace_files = workspace_files;
+                presets.channels = channels;
+            } catch (e) {
+                console.error('Failed to load presets:', e);
             }
         }
 
-        function showMessage(text, type = 'error') {
-            const msg = document.getElementById('message');
-            msg.className = type;
-            msg.textContent = text;
-            msg.style.display = 'block';
-            setTimeout(() => msg.style.display = 'none', 5000);
-        }
+        document.querySelectorAll('[data-create-tab]').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetTab = tab.dataset.createTab;
 
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.querySelector(`.tab[onclick="switchTab('${tabName}')"]`).classList.add('active');
-            document.getElementById(`tab-${tabName}`).classList.add('active');
-        }
+                document.querySelectorAll('[data-create-tab]').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
 
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('active');
+                document.querySelectorAll('#modal-create .config-panel').forEach(p => p.style.display = 'none');
+                document.getElementById(`create-tab-${targetTab}`).style.display = 'block';
+            });
+        });
+        
+        function showAlert(type, message) {
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            document.querySelector('.container').prepend(alert);
+            setTimeout(() => alert.remove(), 3000);
         }
-
-        function getStatusClass(status) {
-            if (status === 'running') return 'running';
-            if (status === 'stopped' || status === 'exited') return 'stopped';
-            return '';
-        }
-
-        function getStatusBadge(status) {
-            if (status === 'running') return '<span class="status-badge status-running">运行中</span>';
-            if (status === 'stopped' || status === 'exited') return '<span class="status-badge status-stopped">已停止</span>';
-            return `<span class="status-badge">${status}</span>`;
-        }
-
-        async function refreshAll() {
-            await loadInstances();
-            await loadBaseConfig();
-        }
-
+        
         async function loadInstances() {
+            const list = document.getElementById('instances-list');
+            list.innerHTML = '<div class="loading">加载中...</div>';
             try {
-                instances = await api('/api/instances');
-                const container = document.getElementById('instances-list');
-                const logSelect = document.getElementById('log-instance');
-                
+                const instances = await api('GET', '/api/instances');
                 if (!instances.length) {
-                    container.innerHTML = '<p style="color:#aaa;padding:20px;">未找到实例</p>';
+                    list.innerHTML = '<div class="empty-state">暂无实例，点击"添加实例"创建</div>';
                     return;
                 }
-
-                container.innerHTML = instances.map(inst => `
-                    <div class="instance-card ${getStatusClass(inst.status)}">
+                list.innerHTML = instances.map(inst => {
+                    const enabledSkills = getEnabledSkills(inst.config);
+                    const isRunning = inst.status === 'running';
+                    const clusterName = inst.config?.cluster?.instanceName;
+                    const displayName = clusterName || inst.name;
+                    const instanceId = inst.config?.cluster?.instanceId || inst.instance_id || inst.name;
+                    const image = inst.image || (inst.config?.models?.providers ? 'OpenClaw' : 'unknown');
+                    const created = inst.created || (inst.config?.meta?.lastTouchedAt ? new Date(inst.config.meta.lastTouchedAt).toLocaleString('zh-CN') : '未知');
+                    return `
+                    <div class="instance-card">
                         <div class="instance-header">
-                            <span class="instance-name">${inst.name}</span>
-                            ${getStatusBadge(inst.status)}
+                            <span class="instance-name">${displayName}</span>
+                            <span class="instance-status status-${isRunning ? 'healthy' : 'stopped'}">${isRunning ? 'running' : 'stopped'}</span>
                         </div>
                         <div class="instance-info">
-                            <div>镜像: ${inst.image}</div>
-                            <div>创建时间: ${inst.created || 'N/A'}</div>
+                            ${clusterName && clusterName !== inst.name ? `<div>容器: <span>${inst.name}</span></div>` : ''}
+                            <div>实例ID: <span>${instanceId}</span></div>
+                            <div>镜像: <span>${image}</span></div>
+                            <div>创建: <span>${created}</span></div>
+                            ${enabledSkills.length ? `<div>技能: ${enabledSkills.slice(0,3).map(s => `<span class="skill-tag">${s}</span>`).join('')}${enabledSkills.length > 3 ? '...' : ''}</div>` : ''}
                         </div>
                         <div class="instance-actions">
-                            <button class="btn btn-success" onclick="startInstance('${inst.name}')" ${inst.status === 'running' ? 'disabled' : ''}>启动</button>
-                            <button class="btn btn-warning" onclick="stopInstance('${inst.name}')" ${inst.status !== 'running' ? 'disabled' : ''}>停止</button>
-                            <button class="btn btn-primary" onclick="restartInstance('${inst.name}')">重启</button>
-                            <button class="btn" style="background:#666;color:#fff;" onclick="editInstance('${inst.name}')">编辑配置</button>
-                            <button class="btn" style="background:#555;color:#fff;" onclick="viewLogs('${inst.name}')">日志</button>
-                            <button class="btn" style="background:#9c27b0;color:#fff;" onclick="openConsole('${inst.name}', '${inst.config?.gateway?.auth?.token || ''}')" ${inst.status !== 'running' ? 'disabled' : ''}>控制台</button>
-                            <button class="btn btn-danger" onclick="deleteInstance('${inst.name}')">删除</button>
+                            ${!isRunning ? `<button class="primary" onclick="startInstance('${inst.name}')">启动</button>` : `<button onclick="stopInstance('${inst.name}')">停止</button>`}
+                            <button onclick="restartInstance('${inst.name}')" ${!isRunning ? 'disabled' : ''}>重启</button>
+                            <button onclick="openControlUi('${inst.name}')" ${!isRunning ? 'disabled' : ''}>控制台</button>
+                            <button onclick="showLogs('${inst.name}')">日志</button>
+                            <button onclick="showConfig('${inst.name}')">配置</button>
+                            <button class="danger" onclick="deleteInstance('${inst.name}')">删除</button>
                         </div>
                     </div>
-                `).join('');
-
-                logSelect.innerHTML = '<option value="">All Instances</option>' + 
-                    instances.map(inst => `<option value="${inst.name}">${inst.name}</option>`).join('');
-            } catch (error) {
-                document.getElementById('instances-list').innerHTML = 
-                    `<div class="error">Failed to load instances: ${error.message}</div>`;
+                `}).join('');
+            } catch (e) {
+                list.innerHTML = `<div class="empty-state" style="color:#ff4d4f;">加载失败: ${e.message}</div>`;
             }
         }
-
-        async function startInstance(name) {
-            await api(`/api/instances/${name}/start`, { method: 'POST' });
-            showMessage(`${name} 已启动`, 'success');
-            await loadInstances();
+        
+        function getEnabledSkills(config) {
+            if (!config || !config.agents || !config.agents.defaults || !config.agents.defaults.skills) return [];
+            return config.agents.defaults.skills;
         }
-
-        async function stopInstance(name) {
-            await api(`/api/instances/${name}/stop`, { method: 'POST' });
-            showMessage(`${name} 已停止`, 'success');
-            await loadInstances();
-        }
-
-        async function restartInstance(name) {
-            await api(`/api/instances/${name}/restart`, { method: 'POST' });
-            showMessage(`${name} 重启中`, 'success');
-            await loadInstances();
-        }
-
-        function openConsole(name, token) {
-            if (!token) {
-                showMessage('无法打开控制台：未找到令牌', 'error');
-                return;
-            }
-            window.open(`/instance/${name}/__openclaw__/dashboard/chat?token=${token}`, '_blank');
-        }
-
-        async function deleteInstance(name) {
-            if (!confirm(`确定要删除实例 ${name} 吗？`)) return;
-            await api(`/api/instances/${name}`, { method: 'DELETE' });
-            showMessage(`${name} 已删除`, 'success');
-            await loadInstances();
-        }
-
-        function showAddInstanceModal() {
-            document.getElementById('new-instance-name').value = '';
-            document.getElementById('add-modal').classList.add('active');
-        }
-
-        async function addInstance() {
-            const name = document.getElementById('new-instance-name').value.trim();
-            if (!name) {
-                showMessage('实例名称不能为空', 'error');
-                return;
-            }
+        
+        async function loadStackStatus() {
+            const el = document.getElementById('stack-status');
             try {
-                await api('/api/instances', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, gpu: document.getElementById("new-instance-gpu").value === "true" })
-                });
-                showMessage(`${name} 已创建`, 'success');
-                closeModal('add-modal');
-                await loadInstances();
-            } catch (error) {
-                showMessage(error.message, 'error');
+                const data = await api('GET', '/api/stack/status');
+                el.innerHTML = `<div style="font-size:13px;color:#666;">Stack 状态: ${data.running}/${data.total} 运行中</div>`;
+            } catch (e) {
+                el.innerHTML = `<div style="font-size:13px;color:#ff4d4f;">状态加载失败: ${e.message}</div>`;
             }
         }
-
-        async function editInstance(name) {
-            currentEditInstance = name;
-            try {
-                const config = await api(`/api/config/${name}`);
-                document.getElementById('instance-config-editor').value = JSON.stringify(config, null, 2);
-                document.getElementById('edit-modal-title').textContent = `编辑 ${name} 配置`;
-                document.getElementById('edit-modal').classList.add('active');
-            } catch (error) {
-                showMessage(`加载配置失败: ${error.message}`, 'error');
-            }
-        }
-
-        async function saveInstanceConfig() {
-            if (!currentEditInstance) return;
-            const configText = document.getElementById('instance-config-editor').value;
-            try {
-                const config = JSON.parse(configText);
-                await api(`/api/config/${currentEditInstance}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(config)
-                });
-                showMessage('配置已保存', 'success');
-                closeModal('edit-modal');
-                await loadInstances();
-            } catch (error) {
-                if (error instanceof SyntaxError) {
-                    showMessage('JSON 格式无效', 'error');
-                } else {
-                    showMessage(error.message, 'error');
-                }
-            }
-        }
-
-        async function loadLogs() {
-            const instance = document.getElementById('log-instance').value;
-            const container = document.getElementById('logs-container');
-            container.textContent = '加载中...';
-            try {
-                if (instance) {
-                    const data = await api(`/api/instances/${instance}/logs?tail=200`);
-                    container.textContent = data.logs || '无日志';
-                } else {
-                    const allLogs = [];
-                    for (const inst of instances) {
-                        try {
-                            const data = await api(`/api/instances/${inst.name}/logs?tail=50`);
-                            allLogs.push(`=== ${inst.name} ===\n${data.logs || '无日志'}`);
-                        } catch (e) {
-                            allLogs.push(`=== ${inst.name} ===\nError: ${e.message}`);
-                        }
-                    }
-                    container.textContent = allLogs.join('\n\n');
-                }
-            } catch (error) {
-                container.textContent = `Error: ${error.message}`;
-            }
-        }
-
-        async function viewLogs(name) {
-            document.getElementById('logs-modal-title').textContent = `${name} 日志`;
-            document.getElementById('modal-logs').textContent = '加载中...';
-            document.getElementById('logs-modal').classList.add('active');
-            try {
-                const data = await api(`/api/instances/${name}/logs?tail=500`);
-                document.getElementById('modal-logs').textContent = data.logs || 'No logs available';
-            } catch (error) {
-                document.getElementById('modal-logs').textContent = `Error: ${error.message}`;
-            }
-        }
-
+        
         async function loadBaseConfig() {
             try {
-                const config = await api('/api/base-config');
+                const config = await api('GET', '/api/base-config');
                 document.getElementById('base-config-editor').value = JSON.stringify(config, null, 2);
-            } catch (error) {
+            } catch (e) {
                 document.getElementById('base-config-editor').value = '{}';
             }
         }
-
-        async function saveBaseConfig() {
-            const configText = document.getElementById('base-config-editor').value;
-            try {
-                const config = JSON.parse(configText);
-                await api('/api/config/base', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(config)
-                });
-                showMessage('基础配置已保存', 'success');
-            } catch (error) {
-                if (error instanceof SyntaxError) {
-                    showMessage('JSON 格式无效', 'error');
-                } else {
-                    showMessage(error.message, 'error');
-                }
-            }
-        }
-
-        function saveWebhook() {
-            const url = document.getElementById('webhook-url').value.trim();
-            localStorage.setItem('nest_admin_webhook_url', url);
-            showMessage('Webhook 地址已保存', 'success');
-        }
-
+        
         async function startStack() {
             try {
-                await api('/api/stack/start', { method: 'POST' });
-                showMessage('集群启动请求已发送', 'success');
-                setTimeout(loadInstances, 2000);
-            } catch (error) {
-                showMessage(`启动集群失败: ${error.message}`, 'error');
-            }
+                const res = await api('POST', '/api/stack/start');
+                if (res.status === 'error') throw new Error(res.message);
+                showAlert('success', 'Stack 启动中...');
+                setTimeout(() => { loadInstances(); loadStackStatus(); }, 3000);
+            } catch (e) { showAlert('error', e.message); }
         }
-
+        
         async function stopStack() {
+            if (!confirm('确定停止 Stack？这将停止所有容器。')) return;
             try {
-                await api('/api/stack/stop', { method: 'POST' });
-                showMessage('集群停止请求已发送', 'success');
+                const res = await api('POST', '/api/stack/stop');
+                if (res.status === 'error') throw new Error(res.message);
+                showAlert('success', 'Stack 停止中...');
+                setTimeout(() => { loadInstances(); loadStackStatus(); }, 3000);
+            } catch (e) { showAlert('error', e.message); }
+        }
+        
+        async function startInstance(name) {
+            try {
+                await api('POST', `/api/instances/${name}/start`);
+                showAlert('success', `${name} 启动中...`);
                 setTimeout(loadInstances, 2000);
-            } catch (error) {
-                showMessage(`停止集群失败: ${error.message}`, 'error');
+            } catch (e) { showAlert('error', e.message); }
+        }
+        
+        async function stopInstance(name) {
+            try {
+                await api('POST', `/api/instances/${name}/stop`);
+                showAlert('success', `${name} 已停止`);
+                setTimeout(loadInstances, 2000);
+            } catch (e) { showAlert('error', e.message); }
+        }
+        
+        async function restartInstance(name) {
+            try {
+                await api('POST', `/api/instances/${name}/restart`);
+                showAlert('success', `${name} 重启中...`);
+                setTimeout(loadInstances, 3000);
+            } catch (e) { showAlert('error', e.message); }
+        }
+        
+        async function openControlUi(name) {
+            try {
+                const inst = await api('GET', `/api/instances/${name}`);
+                if (inst.status !== 'running') {
+                    showAlert('error', '实例未运行，无法打开控制台');
+                    return;
+                }
+                const token = inst.config?.gateway?.auth?.token || '';
+                const host = window.location.hostname;
+                const proxyPort = 18443;
+                let url = `https://${host}:${proxyPort}/instance/${name}/__openclaw__/dashboard/chat`;
+                if (token) {
+                    url += `?token=${encodeURIComponent(token)}`;
+                }
+                window.open(url, '_blank', 'noopener,noreferrer');
+            } catch (e) {
+                showAlert('error', `打开控制台失败: ${e.message}`);
+            }
+        }
+        
+        async function deleteInstance(name) {
+            if (!confirm(`确定删除实例 ${name}？`)) return;
+            try {
+                await api('DELETE', `/api/instances/${name}`);
+                showAlert('success', `${name} 已删除`);
+                setTimeout(loadInstances, 1000);
+            } catch (e) { showAlert('error', e.message); }
+        }
+        
+        function showAddModal() {
+            document.getElementById('new-instance-name').value = '';
+            document.getElementById('modal-add').classList.add('show');
+        }
+        
+        async function addInstance() {
+            const name = document.getElementById('new-instance-name').value.trim();
+            if (!name) { showAlert('error', '请输入实例名称'); return; }
+            try {
+                await api('POST', '/api/instances', { name });
+                closeModal('add');
+                showAlert('success', `${name} 已添加`);
+                setTimeout(loadInstances, 1000);
+            } catch (e) { showAlert('error', e.message); }
+        }
+
+        function showCreateModal() {
+            document.getElementById('instance-name').value = '';
+            document.querySelectorAll('input[name="image"]')[0].checked = true;
+            document.getElementById('plugin-feishu').checked = false;
+            document.getElementById('plugin-weixin').checked = false;
+            document.getElementById('channel-feishu').checked = false;
+            document.getElementById('channel-weixin').checked = false;
+
+            const identitySelect = document.getElementById('instance-identity');
+            identitySelect.innerHTML = '<option value="empty">空白</option>';
+            if (presets.identities && presets.identities.length) {
+                presets.identities.forEach(id => {
+                    const opt = document.createElement('option');
+                    opt.value = id.id;
+                    opt.textContent = id.name;
+                    identitySelect.appendChild(opt);
+                });
+            }
+            identitySelect.value = 'empty';
+
+            renderSkillsCheckboxesCreate();
+            document.getElementById('modal-create').classList.add('show');
+        }
+
+        function renderSkillsCheckboxesCreate() {
+            const container = document.getElementById('skills-checkboxes');
+            if (!presets.skills || !presets.skills.length) {
+                container.innerHTML = '<div style="color:#999;font-size:12px;">加载中...</div>';
+                return;
+            }
+            container.innerHTML = presets.skills.map(skill => `
+                <label style="display:flex;align-items:center;gap:8px;padding:4px 0;">
+                    <input type="checkbox" value="${skill.id}">
+                    <span>${skill.name}</span>
+                </label>
+            `).join('');
+        }
+
+        async function createInstance() {
+            const name = document.getElementById('instance-name').value.trim();
+            if (!name) { showAlert('error', '请输入实例名称'); return; }
+            const image = document.querySelector('input[name="image"]:checked').value;
+            const identity = document.getElementById('instance-identity').value;
+
+            const skills = [];
+            document.querySelectorAll('#skills-checkboxes input:checked').forEach(cb => {
+                skills.push(cb.value);
+            });
+
+            const plugins = [];
+            if (document.getElementById('plugin-feishu').checked) plugins.push('feishu');
+            if (document.getElementById('plugin-weixin').checked) plugins.push('openclaw-weixin');
+
+            const channels = {};
+            if (document.getElementById('channel-feishu').checked) channels.feishu = true;
+            if (document.getElementById('channel-weixin').checked) channels.weixin = true;
+
+            try {
+                await api('POST', '/api/instances', {
+                    name, image, identity, skills, plugins,
+                    modelProvider: 'minimax', channels
+                });
+                closeModal('create');
+                showAlert('success', `${name} 创建成功`);
+                setTimeout(loadInstances, 1000);
+            } catch (e) { showAlert('error', e.message); }
+        }
+        
+        async function showConfig(name) {
+            currentInstance = name;
+            document.getElementById('config-title').textContent = `实例配置: ${name}`;
+            
+            try {
+                const config = await api('GET', `/api/instances/${name}/full-config`);
+                currentConfig = config || {};
+                
+                document.getElementById('cfg-instance-id').value = currentConfig.cluster?.instanceId || 1;
+                document.getElementById('cfg-instance-name').value = currentConfig.cluster?.instanceName || name;
+                document.getElementById('cfg-description').value = currentConfig.cluster?.description || '';
+                document.getElementById('cfg-log-level').value = currentConfig.logging?.level || 'info';
+                
+                const token = currentConfig.gateway?.auth?.token || '';
+                document.getElementById('cfg-gateway-token').value = token;
+                document.getElementById('cfg-console-url').textContent = `https://${window.location.hostname}:18443/instance/${name}/__openclaw__/dashboard/chat?token=${token}`;
+                
+                const disableDeviceAuth = currentConfig.gateway?.controlUi?.dangerouslyDisableDeviceAuth || false;
+                document.getElementById('cfg-disable-device-auth').checked = disableDeviceAuth;
+                
+                document.getElementById('cfg-json').value = JSON.stringify(currentConfig, null, 2);
+                
+                renderEnvVars(currentConfig.env || {});
+                renderModelProviders(currentConfig);
+                renderChannels(currentConfig.channels || {});
+                renderSkillsCheckboxes(currentConfig.agents?.defaults?.skills || []);
+                renderPluginsCheckboxes(currentConfig.plugins?.entries || {});
+                renderWorkspaceFiles();
+                
+            } catch (e) {
+                showAlert('error', `加载配置失败: ${e.message}`);
+                currentConfig = {};
+            }
+            
+            document.querySelectorAll('.config-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector('.config-tab').classList.add('active');
+            document.querySelectorAll('.config-panel').forEach(p => p.style.display = 'none');
+            document.getElementById('config-tab-basic').style.display = 'block';
+            
+            document.getElementById('modal-config').classList.add('show');
+        }
+        
+        function renderEnvVars(env) {
+            const container = document.getElementById('env-vars');
+            container.innerHTML = '';
+            for (const [key, value] of Object.entries(env)) {
+                addEnvVarRow(key, value);
+            }
+        }
+        
+        function addEnvVarRow(key = '', value = '') {
+            const container = document.getElementById('env-vars');
+            const row = document.createElement('div');
+            row.className = 'env-var-row';
+            row.innerHTML = `
+                <input type="text" class="env-key" placeholder="变量名 (如 MINIMAX_API_KEY)" value="${key}">
+                <input type="text" class="env-value" placeholder="变量值" value="${value}">
+                <button class="remove" onclick="this.parentElement.remove()">×</button>
+            `;
+            container.appendChild(row);
+        }
+        
+        function copyToken() {
+            const tokenInput = document.getElementById('cfg-gateway-token');
+            navigator.clipboard.writeText(tokenInput.value).then(() => {
+                showAlert('success', 'Token 已复制到剪贴板');
+            }).catch(() => {
+                tokenInput.select();
+                document.execCommand('copy');
+                showAlert('success', 'Token 已复制到剪贴板');
+            });
+        }
+        
+        function regenerateToken() {
+            if (!confirm('确定要重新生成访问令牌吗？重新生成后需要更新所有使用旧令牌的客户端。')) return;
+            const newToken = Array.from({length: 32}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+            document.getElementById('cfg-gateway-token').value = newToken;
+            document.getElementById('cfg-console-url').textContent = `https://${window.location.hostname}:18443/instance/${currentInstance}/__openclaw__/dashboard/chat?token=${newToken}`;
+            showAlert('success', 'Token 已重新生成，请在保存配置后重启实例');
+        }
+        
+        async function approvePairing() {
+            const btn = document.getElementById('btn-approve-pairing');
+            const status = document.getElementById('pairing-status');
+            btn.disabled = true;
+            btn.textContent = '正在批准...';
+            status.textContent = '';
+            
+            try {
+                const response = await fetch(`${API_BASE}/instances/${currentInstance}/pairing/approve`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.status === 'approved') {
+                    status.innerHTML = `<span style="color:green;">✓ 已批准 ${result.approved_count} 个设备</span>`;
+                    showAlert('success', `已批准 ${result.approved_count} 个待连接设备`);
+                } else if (result.status === 'no_pending') {
+                    status.innerHTML = `<span style="color:orange;">无待批准的设备</span>`;
+                } else {
+                    status.innerHTML = `<span style="color:red;">错误: ${result.message || '未知错误'}</span>`;
+                }
+            } catch (err) {
+                status.innerHTML = `<span style="color:red;">请求失败: ${err.message}</span>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '批准待连接设备';
+            }
+        }
+        
+        function addEnvVar() {
+            addEnvVarRow();
+        }
+        
+        function renderModelProviders(config) {
+            const container = document.getElementById('model-providers-list');
+            const providers = config.models?.providers || {};
+            const agentDefaults = config.agents?.defaults?.model?.primary || '';
+            
+            selectedModels = {};
+            if (agentDefaults && agentDefaults.includes('/')) {
+                const [prov, model] = agentDefaults.split('/');
+                selectedModels[prov] = model;
+            }
+            
+            container.innerHTML = presets.model_providers.map(provider => {
+                const providerConfig = providers[provider.id] || {};
+                let selectedModel = selectedModels[provider.id] || '';
+                if (!selectedModel && providerConfig.models && providerConfig.models.length > 0) {
+                    selectedModel = providerConfig.models[0].id;
+                }
+                
+                let apiKeyDisplay = '';
+                if (providerConfig.apiKey) {
+                    apiKeyDisplay = providerConfig.apiKey.replace(/\$\{[^}]+\}/, '').replace(/_API_KEY/, '');
+                }
+                
+                return `
+                <div class="provider-card" data-provider="${provider.id}">
+                    <div class="provider-header">
+                        <span class="provider-name">${provider.name}</span>
+                        <span class="provider-base-url">${provider.baseUrl}</span>
+                    </div>
+                    <div class="api-key-row">
+                        <input type="password" placeholder="API Key (留空)" value="${apiKeyDisplay.replace(/"/g, '&quot;')}">
+                    </div>
+                    <div class="provider-models">
+                        ${provider.models.map(m => `
+                            <button class="provider-model-btn ${selectedModel === m.id ? 'selected' : ''}" 
+                                    onclick="selectModel('${provider.id}', '${m.id}', this)">
+                                ${m.name}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+        
+        function selectModel(providerId, modelId, btn) {
+            selectedModels[providerId] = modelId;
+            const card = btn.closest('.provider-card');
+            card.querySelectorAll('.provider-model-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+        }
+        
+        function renderChannels(channels) {
+            const container = document.getElementById('channels-list');
+            container.innerHTML = presets.channels.map(channel => {
+                const channelConfig = channels[channel.id] || {};
+                return `
+                <div class="channel-card" data-channel="${channel.id}">
+                    <div class="channel-header">
+                        <span class="channel-name">${channel.name}</span>
+                        <input type="checkbox" ${channelConfig.enabled !== false ? 'checked' : ''} onchange="toggleChannel('${channel.id}', this.checked)">
+                    </div>
+                    <div class="channel-fields">
+                        ${channel.fields.map(field => `
+                            <div class="form-group">
+                                <label>${field.name}</label>
+                                ${field.type === 'select' ? 
+                                    `<select class="channel-field" data-field="${field.id}">
+                                        ${field.options.map(opt => `<option value="${opt}" ${channelConfig[field.id] === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                                    </select>` :
+                                    `<input type="${field.type}" class="channel-field" data-field="${field.id}" placeholder="${field.placeholder || ''}" value="${channelConfig[field.id] || ''}">`
+                                }
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+        
+        function toggleChannel(channelId, enabled) {
+            const card = document.querySelector(`[data-channel="${channelId}"]`);
+            card.querySelectorAll('.channel-field').forEach(f => f.disabled = !enabled);
+        }
+        
+        function renderSkillsCheckboxes(enabledSkills) {
+            const container = document.getElementById('skills-list');
+            container.innerHTML = presets.skills.map(skill => `
+                <label class="checkbox-item">
+                    <input type="checkbox" value="${skill.id}" ${enabledSkills.includes(skill.id) ? 'checked' : ''}>
+                    <div class="item-info">
+                        <div class="item-name">${skill.name}</div>
+                        <div class="item-desc">${skill.description}</div>
+                    </div>
+                </label>
+            `).join('');
+        }
+        
+        function renderPluginsCheckboxes(enabledPlugins) {
+            const container = document.getElementById('plugins-list');
+            container.innerHTML = presets.plugins.map(plugin => `
+                <label class="checkbox-item">
+                    <input type="checkbox" value="${plugin.id}" ${enabledPlugins[plugin.id]?.enabled ? 'checked' : ''}>
+                    <div class="item-info">
+                        <div class="item-name">${plugin.name}</div>
+                        <div class="item-desc">${plugin.description}</div>
+                    </div>
+                </label>
+            `).join('');
+        }
+        
+        function renderWorkspaceFiles() {
+            const container = document.getElementById('workspace-file-list');
+            container.innerHTML = presets.workspace_files.map(f => `
+                <button class="workspace-file-btn" onclick="openWorkspaceFile('${f.id}')">${f.name}</button>
+            `).join('');
+            document.getElementById('workspace-editor').style.display = 'none';
+        }
+        
+        async function openWorkspaceFile(filename) {
+            currentWorkspaceFile = filename;
+            try {
+                const res = await api('GET', `/api/instances/${currentInstance}/workspace/${filename}`);
+                document.getElementById('workspace-file-name').textContent = filename;
+                document.getElementById('cfg-workspace-content').value = res.content || '';
+                document.getElementById('workspace-editor').style.display = 'block';
+                
+                document.querySelectorAll('.workspace-file-btn').forEach(b => b.classList.remove('active'));
+                event.target.classList.add('active');
+            } catch (e) {
+                showAlert('error', `加载文件失败: ${e.message}`);
+            }
+        }
+        
+        async function saveWorkspaceFile() {
+            if (!currentWorkspaceFile) return;
+            try {
+                await api('PUT', `/api/instances/${currentInstance}/workspace/${currentWorkspaceFile}`, {
+                    content: document.getElementById('cfg-workspace-content').value
+                });
+                showAlert('success', `${currentWorkspaceFile} 已保存`);
+            } catch (e) {
+                showAlert('error', `保存失败: ${e.message}`);
+            }
+        }
+        
+        function saveFullConfig() {
+            const enabledSkills = [];
+            document.querySelectorAll('#skills-list input:checked').forEach(cb => {
+                enabledSkills.push(cb.value);
+            });
+            
+            const enabledPlugins = {};
+            document.querySelectorAll('#plugins-list input:checked').forEach(cb => {
+                enabledPlugins[cb.value] = { enabled: true };
+            });
+            
+            const envVars = {};
+            document.querySelectorAll('.env-var-row').forEach(row => {
+                const key = row.querySelector('.env-key').value.trim();
+                const value = row.querySelector('.env-value').value.trim();
+                if (key) envVars[key] = value;
+            });
+            
+            const channels = {};
+            presets.channels.forEach(channel => {
+                const card = document.querySelector(`[data-channel="${channel.id}"]`);
+                if (!card) return;
+                const enabled = card.querySelector('input[type="checkbox"]')?.checked;
+                if (enabled) {
+                    channels[channel.id] = { enabled: true };
+                    card.querySelectorAll('.channel-field').forEach(field => {
+                        if (field.disabled) return;
+                        const val = field.value.trim();
+                        if (field.dataset.field === 'allowFrom') {
+                            channels[channel.id][field.dataset.field] = val === '*' || val === '' ? ["*"] : val.split(',').map(s => s.trim());
+                        } else if (field.type === 'select') {
+                            channels[channel.id][field.dataset.field] = val;
+                        } else {
+                            channels[channel.id][field.dataset.field] = val;
+                        }
+                    });
+                }
+            });
+            
+            const providers = {};
+            for (const [providerId, modelId] of Object.entries(selectedModels)) {
+                const provider = presets.model_providers.find(p => p.id === providerId);
+                if (!provider) continue;
+                
+                const apiKeyInput = document.querySelector(`[data-provider="${providerId}"] input[type="password"]`);
+                const apiKey = apiKeyInput?.value?.trim();
+                
+                providers[providerId] = {
+                    baseUrl: provider.baseUrl,
+                    apiKey: apiKey ? `\${${providerId.toUpperCase()}_API_KEY}` : undefined,
+                    api: provider.apiType,
+                    authHeader: provider.authHeader,
+                    models: provider.models.map(m => {
+                        const modelDef = provider.models.find(p => p.id === m.id) || m;
+                        return {
+                            id: m.id,
+                            name: m.name || modelDef.name,
+                            reasoning: modelDef.reasoning !== undefined ? modelDef.reasoning : false,
+                            input: modelDef.input || ["text"],
+                            cost: modelDef.cost || { input: 0, output: 0 },
+                            contextWindow: modelDef.contextWindow || 128000,
+                            maxTokens: modelDef.maxTokens || 4096
+                        };
+                    })
+                };
+            }
+            
+            const primaryModel = Object.entries(selectedModels)[0];
+            const modelKey = primaryModel ? `${primaryModel[0]}/${primaryModel[1]}` : 'minimax/MiniMax-M2.7-highspeed';
+            
+            const config = {
+                meta: {
+                    lastTouchedVersion: "2026.4.0",
+                    lastTouchedAt: new Date().toISOString()
+                },
+                env: envVars,
+                models: {
+                    mode: "merge",
+                    providers: providers
+                },
+                agents: {
+                    defaults: {
+                        model: {
+                            primary: modelKey
+                        },
+                        skills: enabledSkills,
+                        memorySearch: {
+                            enabled: true,
+                            provider: "openai",
+                            remote: {
+                                baseUrl: "http://host.docker.internal:5001/v1",
+                                apiKey: "\${OPENCLAW_MEMORY_API_KEY}"
+                            },
+                            model: "qwen3-embedding-0.6b"
+                        },
+                        compaction: {
+                            mode: "safeguard"
+                        },
+                        sandbox: {
+                            browser: {
+                                enabled: true,
+                                allowHostControl: true
+                            }
+                        }
+                    }
+                },
+                cluster: {
+                    instanceId: parseInt(document.getElementById('cfg-instance-id').value),
+                    instanceName: document.getElementById('cfg-instance-name').value,
+                    description: document.getElementById('cfg-description').value
+                },
+                logging: {
+                    level: document.getElementById('cfg-log-level').value
+                },
+                gateway: {
+                    mode: "local",
+                    bind: "lan",
+                    controlUi: {
+                        dangerouslyDisableDeviceAuth: document.getElementById('cfg-disable-device-auth').checked,
+                        allowInsecureAuth: true
+                    },
+                    auth: {
+                        mode: "token",
+                        token: document.getElementById('cfg-gateway-token').value
+                    }
+                },
+                channels: channels,
+                plugins: {
+                    allow: Object.keys(enabledPlugins),
+                    entries: enabledPlugins
+                }
+            };
+            
+            api('PUT', `/api/instances/${currentInstance}/full-config`, config).then(() => {
+                closeModal('config');
+                showAlert('success', '配置已保存到实例数据目录，需要重启实例才能应用新配置');
+                loadInstances();
+            }).catch(e => {
+                showAlert('error', `保存失败: ${e.message}`);
+            });
+        }
+        
+        async function showLogs(name) {
+            currentInstance = name;
+            document.getElementById('logs-title').textContent = `日志: ${name}`;
+            document.getElementById('log-content').textContent = '加载中...';
+            document.getElementById('modal-logs').classList.add('show');
+            await loadLogs();
+        }
+        
+        async function loadLogs() {
+            if (!currentInstance) return;
+            try {
+                const data = await api('GET', `/api/instances/${currentInstance}/logs?tail=200`);
+                document.getElementById('log-content').textContent = data.logs || '无日志';
+            } catch (e) {
+                document.getElementById('log-content').textContent = `加载失败: ${e.message}`;
+            }
+        }
+        
+        async function saveBaseConfig() {
+            try {
+                const config = JSON.parse(document.getElementById('base-config-editor').value);
+                await api('PUT', '/api/base-config', config);
+                showAlert('success', '基础配置已保存');
+            } catch (e) {
+                showAlert('error', `保存失败: ${e.message}`);
+            }
+        }
+        
+        async function saveWebhook() {
+            const url = document.getElementById('webhook-url').value;
+            localStorage.setItem('nest-webhook-url', url);
+            showAlert('success', 'Webhook 设置已保存');
+        }
+        
+        async function testWebhook() {
+            const url = document.getElementById('webhook-url').value;
+            if (!url) { showAlert('error', '请输入 Webhook URL'); return; }
+            try {
+                const res = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({test: true, timestamp: new Date().toISOString()}) });
+                showAlert('success', '测试消息已发送');
+            } catch (e) {
+                showAlert('error', `发送失败: ${e.message}`);
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const savedWebhook = localStorage.getItem('nest_admin_webhook_url');
-            if (savedWebhook) {
-                document.getElementById('webhook-url').value = savedWebhook;
+        async function loadKeys() {
+            try {
+                const keys = await fetch('/api/presets/keys').then(r => r.json());
+                if (keys.keys) {
+                    if (keys.keys.minimax) {
+                        document.getElementById('key-minimax-apikey').value = keys.keys.minimax.apiKey || '';
+                    }
+                    if (keys.keys.feishu) {
+                        document.getElementById('key-feishu-appid').value = keys.keys.feishu.appId || '';
+                        document.getElementById('key-feishu-appsecret').value = keys.keys.feishu.appSecret || '';
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load keys:', e);
             }
-            refreshAll();
+        }
+
+        document.getElementById('keys-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await fetch('/api/presets/keys', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    version: 1,
+                    keys: {
+                        minimax: {
+                            apiKey: document.getElementById('key-minimax-apikey').value,
+                            label: "MiniMax 主账号"
+                        },
+                        feishu: {
+                            appId: document.getElementById('key-feishu-appid').value,
+                            appSecret: document.getElementById('key-feishu-appsecret').value,
+                            verificationToken: "",
+                            label: "飞书应用"
+                        }
+                    },
+                    defaultProvider: "minimax"
+                })
+            });
+            showAlert('success', '已保存');
         });
+        
+        function closeModal(id) {
+            document.getElementById(`modal-${id}`).classList.remove('show');
+        }
+        
+        function refreshAll() {
+            loadInstances();
+            loadStackStatus();
+        }
+        
+        document.querySelectorAll('.config-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.config-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                document.querySelectorAll('.config-panel').forEach(p => p.style.display = 'none');
+                const configPanel = document.getElementById(`config-tab-${tab.dataset.configTab}`);
+                if (configPanel) configPanel.style.display = 'block';
+            });
+        });
+        
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+                const tabPanel = document.getElementById(`tab-${tab.dataset.tab}`);
+                if (tabPanel) tabPanel.style.display = 'block';
+                if (tab.dataset.tab === 'base-config') loadBaseConfig();
+            });
+        });
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                const btnPanel = document.getElementById('tab-' + btn.dataset.tab);
+                if (btnPanel) btnPanel.classList.add('active');
+                if (btn.dataset.tab === 'keys') loadKeys();
+            });
+        });
+        
+        document.getElementById('webhook-url').value = localStorage.getItem('nest-webhook-url') || '';
+        
+        function updateTime() {
+            document.getElementById('serverTime').textContent = new Date().toLocaleString('zh-CN');
+        }
+        updateTime();
+        setInterval(updateTime, 1000);
+        
+        loadPresets().then(() => {
+            loadInstances();
+            loadStackStatus();
+        });
+        setInterval(loadInstances, 30000);
     </script>
 </body>
 </html>
