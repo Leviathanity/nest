@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import shutil
@@ -16,9 +17,11 @@ import yaml
 
 app = FastAPI(title="Nest Admin API")
 
+cors_origins = os.environ.get("CORS_ORIGINS", "https://localhost:18443,https://127.0.0.1:18443,https://192.168.2.118:18443").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -29,6 +32,7 @@ STACK_NAME = "nest"
 COMPOSE_DIR = Path(os.environ.get("COMPOSE_DIR", "/app/compose"))
 CONFIG_BASE_DIR = Path(os.environ.get("CONFIG_BASE_DIR", "/app/configs/base"))
 CONFIG_INSTANCES_DIR = Path(os.environ.get("CONFIG_INSTANCES_DIR", "/app/configs/instances"))
+PRESETS_DIR = Path(os.environ.get("PRESETS_DIR", "/app/configs/presets"))
 COMPOSE_FILE = COMPOSE_DIR / "docker-compose.yml"
 BACKUP_COMPOSE_FILE = COMPOSE_DIR / "docker-compose.yml.backup"
 
@@ -101,6 +105,10 @@ def run_docker_compose(command: list[str], cwd: Optional[str] = None) -> tuple[i
         return -1, "", str(e)
 
 
+async def run_docker_compose_async(command: list[str], cwd: Optional[str] = None) -> tuple[int, str, str]:
+    return await asyncio.to_thread(run_docker_compose, command, cwd)
+
+
 def get_next_ip() -> str:
     used_ips = set()
     try:
@@ -166,7 +174,7 @@ def get_next_instance_id() -> int:
     return max_id + 1
 
 
-def add_service_to_compose(name: str, image: str, ip: str, http_port: int, app_port: int, data_port: int, api_key: Optional[str] = None) -> bool:
+def add_service_to_compose(name: str, image: str, ip: str, http_port: int, app_port: int, data_port: int, api_key: Optional[str] = None, plugins: Optional[list[str]] = None) -> bool:
     backup_compose_file()
     try:
         compose_content = {}
@@ -178,17 +186,26 @@ def add_service_to_compose(name: str, image: str, ip: str, http_port: int, app_p
         instance_id = get_next_instance_id()
         volume_name = f"openclaw-{instance_id}-data"
 
+        volumes_list = [
+            f"{volume_name}:/root/.openclaw",
+            f"./configs/base:/app/configs/base:ro",
+            f"./configs/instances/{name}:/app/configs/instance:ro",
+            f"./configs/instances/{name}/presets:/app/presets:ro"
+        ]
+
+        if plugins:
+            for plugin_id in plugins:
+                ext_src = PRESETS_DIR / "extensions" / plugin_id
+                if ext_src.exists():
+                    volumes_list.append(f"./configs/presets/extensions/{plugin_id}:/app/extensions/{plugin_id}:ro")
+
         services[name] = {
             "image": image,
             "container_name": name,
             "networks": {
                 "openclaw-net": {"ipv4_address": ip}
             },
-            "volumes": [
-                f"{volume_name}:/root/.openclaw",
-                f"./configs/base:/app/configs/base:ro",
-                f"./configs/instances/{name}:/app/configs/instance:ro"
-            ],
+            "volumes": volumes_list,
             "ports": [
                 f"{http_port}:18789",
                 f"{app_port}:18790",
@@ -294,6 +311,10 @@ def sync_config_to_container(name: str, clear_first: bool = False) -> bool:
         return False
 
 
+async def sync_config_to_container_async(name: str, clear_first: bool = False) -> bool:
+    return await asyncio.to_thread(sync_config_to_container, name, clear_first)
+
+
 def remove_service_from_compose(name: str) -> bool:
     backup_compose_file()
     try:
@@ -392,6 +413,26 @@ async def get_instance(name: str):
     }
 
 
+def copy_presets_to_instance(instance_name: str, identity: str, skills: list):
+    """复制预设文件到实例目录"""
+    instance_dir = CONFIG_INSTANCES_DIR / instance_name
+    presets_dir = instance_dir / "presets"
+
+    presets_dir.mkdir(parents=True, exist_ok=True)
+
+    if identity and identity != "empty":
+        identity_src = PRESETS_DIR / "identities" / identity
+        identity_dst = presets_dir / "identities" / identity
+        if identity_src.exists():
+            shutil.copytree(identity_src, identity_dst, dirs_exist_ok=True)
+
+    for skill_id in skills:
+        skill_src = PRESETS_DIR / "skills" / skill_id
+        skill_dst = presets_dir / "skills" / skill_id
+        if skill_src.exists():
+            shutil.copytree(skill_src, skill_dst, dirs_exist_ok=True)
+
+
 @app.post("/api/instances")
 async def create_instance(data: InstanceCreateRequest):
     name = data.name
@@ -408,7 +449,13 @@ async def create_instance(data: InstanceCreateRequest):
 
     instance_dir = CONFIG_INSTANCES_DIR / name
     instance_dir.mkdir(parents=True, exist_ok=True)
-    
+
+    copy_presets_to_instance(
+        name,
+        data.identity or "empty",
+        data.skills or []
+    )
+
     import secrets
     token = secrets.token_hex(16)
     
@@ -497,6 +544,18 @@ async def create_instance(data: InstanceCreateRequest):
             "entries": {}
         }
     }
+
+    if data.plugins:
+        default_config["plugins"]["entries"] = {}
+        for plugin_id in data.plugins:
+            plugin_path = f"/app/extensions/{plugin_id}"
+            default_config["plugins"]["entries"][plugin_id] = {
+                "path": plugin_path
+            }
+
+    if data.channels:
+        default_config["channels"] = data.channels
+
     (instance_dir / "openclaw.json").write_text(json.dumps(default_config, indent=2))
 
     model = data.model or "minimax/MiniMax-M2.7-highspeed"
@@ -511,12 +570,15 @@ async def create_instance(data: InstanceCreateRequest):
         ip = get_next_ip()
         http_port, app_port, data_port = get_next_ports()
         volume_name = create_instance_volume(name)
-        add_service_to_compose(name, image, ip, http_port, app_port, data_port, api_key=api_key_to_use)
-        returncode, stdout, stderr = start_compose_service(name)
+        add_service_to_compose(name, image, ip, http_port, app_port, data_port, api_key=api_key_to_use, plugins=data.plugins or [])
+        returncode, stdout, stderr = await run_docker_compose_async(
+            ["docker-compose", "-f", str(COMPOSE_FILE), "up", "-d", name],
+            cwd=str(COMPOSE_DIR)
+        )
         if returncode != 0:
             return {"name": name, "status": "created_with_errors", "compose_error": stderr}
-        sync_config_to_container(name, clear_first=False)
-        subprocess.run(["docker", "restart", name], capture_output=True)
+        await sync_config_to_container_async(name, clear_first=False)
+        await asyncio.to_thread(subprocess.run, ["docker", "restart", name], capture_output=True)
         return {"name": name, "status": "created", "image": image, "ip": ip, "ports": {"http": http_port, "app": app_port, "data": data_port}}
     else:
         ip = get_next_ip()
@@ -540,9 +602,9 @@ async def create_instance(data: InstanceCreateRequest):
                 }
             )
             import time
-            time.sleep(2)
-            sync_config_to_container(name, clear_first=False)
-            subprocess.run(["docker", "restart", name], capture_output=True)
+            await asyncio.sleep(2)
+            await sync_config_to_container_async(name, clear_first=False)
+            await asyncio.to_thread(subprocess.run, ["docker", "restart", name], capture_output=True)
             return {"name": name, "status": "created", "image": image, "ip": ip, "ports": {"http": http_port, "app": app_port, "data": data_port}}
         except Exception as e:
             return {"name": name, "status": "creation_failed", "error": str(e)}
@@ -639,7 +701,7 @@ async def sync_config(name: str):
     if not config_path.exists():
         raise HTTPException(404, f"Config for {name} not found")
     
-    success = sync_config_to_container(name, clear_first=False)
+    success = await sync_config_to_container_async(name, clear_first=False)
     if not success:
         raise HTTPException(500, f"Failed to sync config to container {name}")
     
@@ -661,7 +723,7 @@ async def sync_config_volume(name: str):
     if not config_path.exists():
         raise HTTPException(404, f"Config for {name} not found")
     
-    success = sync_config_to_container(name, clear_first=True)
+    success = await sync_config_to_container_async(name, clear_first=True)
     if not success:
         raise HTTPException(500, f"Failed to sync config to container {name}")
     
@@ -681,14 +743,14 @@ async def start_stack():
     if not compose_file.exists():
         raise HTTPException(404, "docker-compose.yml not found in /app/compose")
     
-    returncode, stdout, stderr = run_docker_compose(
+    returncode, stdout, stderr = await run_docker_compose_async(
         ["docker-compose", "-f", str(compose_file), "up", "-d"],
         cwd=str(COMPOSE_DIR)
     )
-    
+
     if returncode != 0:
         raise HTTPException(500, f"Failed to start stack: {stderr}")
-    
+
     return {"status": "start requested", "output": stdout}
 
 
@@ -700,14 +762,14 @@ async def stop_stack():
     if not compose_file.exists():
         raise HTTPException(404, "docker-compose.yml not found in /app/compose")
     
-    returncode, stdout, stderr = run_docker_compose(
+    returncode, stdout, stderr = await run_docker_compose_async(
         ["docker-compose", "-f", str(compose_file), "stop"],
         cwd=str(COMPOSE_DIR)
     )
-    
+
     if returncode != 0:
         raise HTTPException(500, f"Failed to stop stack: {stderr}")
-    
+
     return {"status": "stop requested", "output": stdout}
 
 
@@ -750,6 +812,89 @@ async def get_base_config():
     if config_path.exists():
         return json.loads(config_path.read_text())
     return {}
+
+
+@app.get("/api/presets/identities")
+async def get_preset_identities():
+    identities_dir = PRESETS_DIR / "identities"
+    if not identities_dir.exists():
+        return []
+    result = []
+    for item in identities_dir.iterdir():
+        if item.is_dir():
+            meta_file = item / "metadata.json"
+            if meta_file.exists():
+                meta = json.loads(meta_file.read_text())
+                result.append({"id": item.name, "name": meta.get("name", item.name), "description": meta.get("description", "")})
+            else:
+                result.append({"id": item.name, "name": item.name, "description": ""})
+    return result
+
+
+@app.get("/api/presets/skills")
+async def get_preset_skills():
+    skills_dir = PRESETS_DIR / "skills"
+    if not skills_dir.exists():
+        return []
+    result = []
+    for item in skills_dir.iterdir():
+        if item.is_dir():
+            meta_file = item / "metadata.json"
+            if meta_file.exists():
+                meta = json.loads(meta_file.read_text())
+                result.append({"id": item.name, "name": meta.get("name", item.name), "description": meta.get("description", "")})
+            else:
+                result.append({"id": item.name, "name": item.name, "description": ""})
+    return result
+
+
+@app.get("/api/presets/plugins")
+async def get_preset_plugins():
+    return [
+        {"id": "feishu", "name": "飞书", "description": "飞书渠道插件"},
+        {"id": "openclaw-weixin", "name": "企业微信", "description": "企业微信渠道插件"}
+    ]
+
+
+@app.get("/api/presets/keys")
+async def get_preset_keys():
+    keys_file = PRESETS_DIR / "keys.json"
+    if not keys_file.exists():
+        return []
+    return json.loads(keys_file.read_text())
+
+
+@app.get("/api/presets/model-providers")
+async def get_preset_model_providers():
+    return [
+        {
+            "id": "minimax",
+            "name": "MiniMax",
+            "description": "MiniMax API",
+            "models": [
+                {"id": "MiniMax-M2.7-highspeed", "name": "M2.7 超速版"},
+                {"id": "MiniMax-M2.7-normal", "name": "M2.7 标准版"}
+            ]
+        }
+    ]
+
+
+@app.get("/api/presets/channels")
+async def get_preset_channels():
+    return [
+        {"id": "feishu", "name": "飞书", "description": "飞书渠道配置"},
+        {"id": "weixin", "name": "企业微信", "description": "企业微信渠道配置"}
+    ]
+
+
+@app.get("/api/presets/core-templates")
+async def get_preset_core_templates():
+    return []
+
+
+@app.get("/api/presets/workspace-files")
+async def get_preset_workspace_files():
+    return []
 
 
 if __name__ == "__main__":
