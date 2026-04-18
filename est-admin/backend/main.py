@@ -55,6 +55,8 @@ class InstanceCreateRequest(BaseModel):
     model: Optional[str] = "minimax/MiniMax-M2.7-highspeed"
     apiKey: Optional[str] = None
     channels: Optional[dict] = {}
+    instance_type: Optional[str] = "compose"
+    gpu: Optional[bool] = True
 
 
 class WebhookConfig(BaseModel):
