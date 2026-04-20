@@ -1,0 +1,16 @@
+# Ignore node_modules in presets
+presets/**/node_modules/
+presets/**/.bin/
+presets/**/*.lock
+presets/**/package-lock.json
+
+# Ignore build outputs
+presets/**/*.js.map
+presets/**/*.d.ts.map
+presets/**/*.d.ts
+
+# Ignore IDE
+.vscode/
+.idea/
+*.swp
+*.swo
