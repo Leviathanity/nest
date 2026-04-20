@@ -124,6 +124,19 @@ def get_next_ip() -> str:
     except Exception:
         pass
 
+    if COMPOSE_FILE.exists():
+        try:
+            with open(COMPOSE_FILE, "r") as f:
+                compose_content = yaml.safe_load(f) or {}
+            for svc_name, svc_config in compose_content.get("services", {}).items():
+                networks = svc_config.get("networks", {})
+                if "openclaw-net" in networks:
+                    ip = networks["openclaw-net"].get("ipv4_address")
+                    if ip:
+                        used_ips.add(ip)
+        except Exception:
+            pass
+
     base_ip = "172.28.0."
     for i in range(10, 255):
         candidate = f"{base_ip}{i}"
@@ -136,13 +149,35 @@ def get_next_ports() -> tuple[int, int, int]:
     used_ports = set()
     try:
         for container in CLIENT.containers.list(all=True):
-            for port, bindings in container.ports.items():
-                if bindings:
-                    for binding in bindings:
-                        if binding.get("HostPort"):
-                            used_ports.add(int(binding["HostPort"]))
+            if container.ports:
+                for port, bindings in container.ports.items():
+                    if bindings:
+                        for binding in bindings:
+                            if binding.get("HostPort"):
+                                used_ports.add(int(binding["HostPort"]))
     except Exception:
         pass
+
+    if COMPOSE_FILE.exists():
+        try:
+            with open(COMPOSE_FILE, "r") as f:
+                compose_content = yaml.safe_load(f) or {}
+            for svc_name, svc_config in compose_content.get("services", {}).items():
+                ports = svc_config.get("ports", [])
+                for port_mapping in ports:
+                    if isinstance(port_mapping, str) and ":" in port_mapping:
+                        host_port = port_mapping.split(":")[0]
+                        try:
+                            used_ports.add(int(host_port))
+                        except ValueError:
+                            pass
+                    elif isinstance(port_mapping, dict) and "target" in port_mapping:
+                        try:
+                            used_ports.add(int(port_mapping["target"]))
+                        except (ValueError, TypeError):
+                            pass
+        except Exception:
+            pass
 
     def find_next_port(start: int) -> int:
         for p in range(start, 65535):
@@ -452,13 +487,6 @@ async def create_instance(data: InstanceCreateRequest):
     instance_dir = CONFIG_INSTANCES_DIR / name
     instance_dir.mkdir(parents=True, exist_ok=True)
 
-    copy_presets_to_instance(
-        name,
-        data.identity or "empty",
-        data.skills or [],
-        data.plugins or []
-    )
-
     import secrets
     token = secrets.token_hex(16)
 
@@ -572,6 +600,13 @@ async def create_instance(data: InstanceCreateRequest):
 
     (instance_dir / "openclaw.json").write_text(json.dumps(default_config, indent=2))
 
+    copy_presets_to_instance(
+        name,
+        data.identity or "empty",
+        data.skills or [],
+        data.plugins or []
+    )
+
     model = data.model or "minimax/MiniMax-M2.7-highspeed"
     if "/" in model:
         provider, model_id = model.split("/", 1)
@@ -581,16 +616,19 @@ async def create_instance(data: InstanceCreateRequest):
     api_key_to_use = data.apiKey
 
     if instance_type == "compose":
-        volume_name = create_instance_volume(name)
-        add_service_to_compose(name, image, ip, http_port, app_port, data_port, api_key=api_key_to_use, plugins=data.plugins or [])
-        returncode, stdout, stderr = await run_docker_compose_async(
-            ["docker-compose", "-f", str(COMPOSE_FILE), "up", "-d", name],
-            cwd=str(COMPOSE_DIR)
-        )
-        if returncode != 0:
-            return {"name": name, "status": "created_with_errors", "compose_error": stderr}
-        await asyncio.to_thread(subprocess.run, ["docker", "restart", name], capture_output=True)
-        return {"name": name, "status": "created", "image": image, "ip": ip, "ports": {"http": http_port, "app": app_port, "data": data_port}}
+        try:
+            volume_name = create_instance_volume(name)
+            add_service_to_compose(name, image, ip, http_port, app_port, data_port, api_key=api_key_to_use, plugins=data.plugins or [])
+            returncode, stdout, stderr = await run_docker_compose_async(
+                ["docker-compose", "-f", str(COMPOSE_FILE), "up", "-d", name],
+                cwd=str(COMPOSE_DIR)
+            )
+            if returncode != 0:
+                return {"name": name, "status": "created_with_errors", "compose_error": stderr}
+            await asyncio.to_thread(subprocess.run, ["docker", "restart", name], capture_output=True)
+            return {"name": name, "status": "created", "image": image, "ip": ip, "ports": {"http": http_port, "app": app_port, "data": data_port}}
+        except Exception as e:
+            return {"name": name, "status": "created_with_errors", "error": str(e)}
     else:
         volume_name = create_instance_volume(name)
         try:
