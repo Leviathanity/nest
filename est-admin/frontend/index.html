@@ -144,6 +144,17 @@
         .env-var-row input { flex: 1; font-size: 12px; padding: 6px 10px; }
         .env-var-row .env-key { font-weight: 500; min-width: 150px; }
         .env-var-row button.remove { color: #ff4d4f; border-color: #ff4d4f; padding: 4px 8px; }
+
+        /* Create Instance Card Layout */
+        .create-card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .create-card { background: #fff; border: 1px solid #e8e8e8; border-radius: 8px; overflow: hidden; }
+        .create-card-header { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: #fafafa; border-bottom: 1px solid #e8e8e8; }
+        .create-card-icon { font-size: 16px; }
+        .create-card-title { font-size: 14px; font-weight: 600; color: #333; }
+        .create-card-body { padding: 16px; }
+        .create-card-body .form-group { margin-bottom: 12px; }
+        .create-card-body .form-group:last-child { margin-bottom: 0; }
+        .create-card-body .form-group label { display: block; margin-bottom: 4px; font-size: 13px; color: #666; font-weight: 500; }
     </style>
 </head>
 <body>
@@ -276,83 +287,94 @@
 
     <!-- Create Instance Modal -->
     <div id="modal-create" class="modal">
-        <div class="modal-content" style="max-width:700px;">
+        <div class="modal-content" style="max-width:900px;">
             <div class="modal-header">
                 <h3>创建新实例</h3>
                 <button class="modal-close" onclick="closeModal('create')">&times;</button>
             </div>
 
-            <div class="config-tabs" style="margin-bottom:15px;">
-                <button class="config-tab active" data-create-tab="basic">基本信息</button>
-                <button class="config-tab" data-create-tab="skills">技能</button>
-                <button class="config-tab" data-create-tab="plugins">插件</button>
-                <button class="config-tab" data-create-tab="channels">渠道</button>
-            </div>
-
-            <!-- Basic Tab -->
-            <div id="create-tab-basic" class="config-panel">
-                <div class="form-group">
-                    <label>实例名称</label>
-                    <input type="text" id="instance-name" placeholder="my-openclaw" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;">
-                </div>
-                <div class="form-group">
-                    <label>镜像</label>
-                    <div style="display:flex;gap:15px;">
-                        <label><input type="radio" name="image" value="openclaw" checked> OpenClaw</label>
-                        <label><input type="radio" name="image" value="openclaw-dev"> OpenClaw Dev</label>
+            <!-- Card Grid Layout -->
+            <div class="create-card-grid">
+                <!-- Basic Card -->
+                <div class="create-card">
+                    <div class="create-card-header">
+                        <span class="create-card-icon">⚙️</span>
+                        <span class="create-card-title">基本信息</span>
+                    </div>
+                    <div class="create-card-body">
+                        <div class="form-group">
+                            <label>实例名称</label>
+                            <input type="text" id="instance-name" placeholder="my-openclaw" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;">
+                        </div>
+                        <div class="form-group">
+                            <label>镜像</label>
+                            <div style="display:flex;gap:15px;">
+                                <label><input type="radio" name="image" value="openclaw:pure-gpu" checked> OpenClaw</label>
+                                <label><input type="radio" name="image" value="openclaw:pure-cpu"> OpenClaw CPU</label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>身份模板</label>
+                            <select id="instance-identity" style="width:100%;padding:10px;background:#fff;border:1px solid #ddd;border-radius:4px;">
+                                <option value="empty">空白</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>身份模板</label>
-                    <select id="instance-identity" style="width:100%;padding:10px;background:#fff;border:1px solid #ddd;border-radius:4px;">
-                        <option value="empty">空白</option>
-                    </select>
-                </div>
-            </div>
 
-            <!-- Skills Tab -->
-            <div id="create-tab-skills" class="config-panel" style="display:none;">
-                <div class="form-group">
-                    <label>预置技能 (可多选)</label>
-                    <div id="skills-checkboxes" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:300px;overflow-y:auto;padding:10px;background:#f5f5f5;border-radius:4px;">
+                <!-- Skills Card -->
+                <div class="create-card">
+                    <div class="create-card-header">
+                        <span class="create-card-icon">🧩</span>
+                        <span class="create-card-title">预置技能</span>
+                    </div>
+                    <div class="create-card-body">
+                        <div id="skills-checkboxes" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;max-height:250px;overflow-y:auto;padding:10px;background:#f5f5f5;border-radius:4px;">
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Plugins Tab -->
-            <div id="create-tab-plugins" class="config-panel" style="display:none;">
-                <div class="form-group">
-                    <label>预置插件</label>
-                    <div style="display:flex;flex-direction:column;gap:10px;padding:10px;background:#f5f5f5;border-radius:4px;">
-                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                            <input type="checkbox" id="plugin-feishu">
-                            <span>飞书</span>
-                        </label>
-                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                            <input type="checkbox" id="plugin-weixin">
-                            <span>企业微信 (二维码配对)</span>
-                        </label>
+                <!-- Plugins Card -->
+                <div class="create-card">
+                    <div class="create-card-header">
+                        <span class="create-card-icon">🔌</span>
+                        <span class="create-card-title">预置插件</span>
+                    </div>
+                    <div class="create-card-body">
+                        <div style="display:flex;flex-direction:column;gap:10px;padding:10px;background:#f5f5f5;border-radius:4px;">
+                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                <input type="checkbox" id="plugin-feishu">
+                                <span>飞书</span>
+                            </label>
+                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                <input type="checkbox" id="plugin-weixin">
+                                <span>企业微信 (二维码配对)</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Channels Tab -->
-            <div id="create-tab-channels" class="config-panel" style="display:none;">
-                <div class="form-group">
-                    <label>启用渠道</label>
-                    <div style="display:flex;flex-direction:column;gap:10px;padding:10px;background:#f5f5f5;border-radius:4px;">
-                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                            <input type="checkbox" id="channel-feishu">
-                            <span>飞书</span>
-                        </label>
-                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                            <input type="checkbox" id="channel-weixin">
-                            <span>微信</span>
-                        </label>
+                <!-- Channels Card -->
+                <div class="create-card">
+                    <div class="create-card-header">
+                        <span class="create-card-icon">📡</span>
+                        <span class="create-card-title">渠道</span>
                     </div>
-                </div>
-                <div style="margin-top:15px;padding:12px;background:#fffbe6;border:1px solid #ffe58f;border-radius:4px;font-size:13px;color:#8c8c8c;">
-                    💡 提示：请在创建实例后，编辑实例配置填入渠道凭证
+                    <div class="create-card-body">
+                        <div style="display:flex;flex-direction:column;gap:10px;padding:10px;background:#f5f5f5;border-radius:4px;">
+                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                <input type="checkbox" id="channel-feishu">
+                                <span>飞书</span>
+                            </label>
+                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                <input type="checkbox" id="channel-weixin">
+                                <span>微信</span>
+                            </label>
+                        </div>
+                        <div style="margin-top:12px;padding:10px;background:#fffbe6;border:1px solid #ffe58f;border-radius:4px;font-size:12px;color:#8c8c8c;">
+                            💡 提示：请在创建实例后，编辑实例配置填入渠道凭证
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -511,7 +533,7 @@
     </div>
 
     <script>
-        const API_BASE = 'http://192.168.2.118:8080';
+        const API_BASE = '';
         let currentInstance = null;
         let presets = { skills: [], plugins: [], core_templates: [], model_providers: [], workspace_files: [], channels: [] };
         let currentConfig = {};
@@ -557,18 +579,6 @@
             }
         }
 
-        document.querySelectorAll('[data-create-tab]').forEach(tab => {
-            tab.addEventListener('click', () => {
-                const targetTab = tab.dataset.createTab;
-
-                document.querySelectorAll('[data-create-tab]').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-
-                document.querySelectorAll('#modal-create .config-panel').forEach(p => p.style.display = 'none');
-                document.getElementById(`create-tab-${targetTab}`).style.display = 'block';
-            });
-        });
-        
         function showAlert(type, message) {
             const alert = document.createElement('div');
             alert.className = `alert alert-${type}`;
@@ -698,8 +708,11 @@
                 }
                 const token = inst.config?.gateway?.auth?.token || '';
                 const host = window.location.hostname;
-                const proxyPort = 18443;
-                let url = `https://${host}:${proxyPort}/instance/${name}/__openclaw__/dashboard/chat`;
+                // 使用直接端口访问而不是 nginx 代理
+                const ports = inst.ports || {};
+                const httpPort = ports['18789/tcp']?.[0]?.HostPort || (parseInt(inst.instance_id) + 18780);
+                // 实例端口是 HTTP
+                let url = `http://${host}:${httpPort}/__openclaw__/dashboard/chat`;
                 if (token) {
                     url += `?token=${encodeURIComponent(token)}`;
                 }
@@ -839,7 +852,8 @@
             document.querySelectorAll('.config-tab').forEach(t => t.classList.remove('active'));
             document.querySelector('.config-tab').classList.add('active');
             document.querySelectorAll('.config-panel').forEach(p => p.style.display = 'none');
-            document.getElementById('config-tab-basic').style.display = 'block';
+            const basicPanel = document.getElementById('config-tab-basic');
+if (basicPanel) basicPanel.style.display = 'block';
             
             document.getElementById('modal-config').classList.add('show');
         }
@@ -1300,9 +1314,9 @@
             loadStackStatus();
         }
         
-        document.querySelectorAll('.config-tab').forEach(tab => {
+        document.querySelectorAll('[data-config-tab]').forEach(tab => {
             tab.addEventListener('click', () => {
-                document.querySelectorAll('.config-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('[data-config-tab]').forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
                 document.querySelectorAll('.config-panel').forEach(p => p.style.display = 'none');
                 const configPanel = document.getElementById(`config-tab-${tab.dataset.configTab}`);

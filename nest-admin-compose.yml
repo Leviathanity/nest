@@ -8,7 +8,7 @@ services:
     image: nest-admin:latest
     container_name: nest-admin
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/run/docker.sock:/var/run/docker.sock:rw
       - ./configs:/app/configs:rw
       - .:/app/compose:rw
     environment:
@@ -16,6 +16,7 @@ services:
       - CONFIG_INSTANCES_DIR=/app/configs/instances
       - COMPOSE_DIR=/app/compose
       - FLASK_ENV=production
+      - OPENCLAW_ALLOW_INSECURE_PRIVATE_WS=1
     ports:
       - "8080:8080"
     networks:

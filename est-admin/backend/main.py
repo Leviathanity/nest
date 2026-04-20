@@ -189,17 +189,9 @@ def add_service_to_compose(name: str, image: str, ip: str, http_port: int, app_p
         volume_name = f"openclaw-{instance_id}-data"
 
         volumes_list = [
-            f"{volume_name}:/root/.openclaw",
-            f"./configs/base:/app/configs/base:ro",
-            f"./configs/instances/{name}:/app/configs/instance:ro",
-            f"./configs/instances/{name}/presets:/app/presets:ro"
+            f"C:/Users/daemo/workplace/nest/configs/instances/{name}:/root/.openclaw:rw,shared",
+            f"C:/Users/daemo/workplace/nest/configs/base:/app/configs/base:ro,shared",
         ]
-
-        if plugins:
-            for plugin_id in plugins:
-                ext_src = PRESETS_DIR / "extensions" / plugin_id
-                if ext_src.exists():
-                    volumes_list.append(f"./configs/presets/extensions/{plugin_id}:/app/extensions/{plugin_id}:ro")
 
         services[name] = {
             "image": image,
@@ -281,36 +273,8 @@ def start_compose_service(name: str) -> tuple[int, str, str]:
 
 
 def sync_config_to_container(name: str, clear_first: bool = False) -> bool:
-    import base64
-    config_path = CONFIG_INSTANCES_DIR / name / "openclaw.json"
-    if not config_path.exists():
-        raise HTTPException(404, f"Config for {name} not found")
-
-    config_content = config_path.read_text()
-    encoded = base64.b64encode(config_content.encode()).decode()
-
-    try:
-        if clear_first:
-            proc = subprocess.run(
-                ["docker", "exec", name, "sh", "-c", "rm -rf /root/.openclaw/*"],
-                capture_output=True, text=True
-            )
-
-        proc = subprocess.run(
-            ["docker", "exec", name, "sh", "-c", f"echo {encoded} | base64 -d > /root/.openclaw/openclaw.json"],
-            capture_output=True, text=True
-        )
-        if proc.returncode != 0:
-            return False
-        
-        subprocess.run(
-            ["docker", "exec", name, "sh", "-c", "chmod 644 /root/.openclaw/openclaw.json"],
-            capture_output=True
-        )
-        
-        return True
-    except Exception:
-        return False
+    """Sync instance config to container. Now handled by mount, no-op."""
+    return True
 
 
 async def sync_config_to_container_async(name: str, clear_first: bool = False) -> bool:
@@ -415,24 +379,60 @@ async def get_instance(name: str):
     }
 
 
-def copy_presets_to_instance(instance_name: str, identity: str, skills: list):
-    """复制预设文件到实例目录"""
+def copy_presets_to_instance(instance_name: str, identity: str, skills: list, plugins: list):
+    """复制预设文件到实例目录，创建完整目录结构"""
     instance_dir = CONFIG_INSTANCES_DIR / instance_name
-    presets_dir = instance_dir / "presets"
+    instance_dir.mkdir(parents=True, exist_ok=True)
 
-    presets_dir.mkdir(parents=True, exist_ok=True)
+    dirs = [
+        "identity", "devices", "memory", "agents",
+        "browser/chrome/user-data", "credentials", "logs",
+        "cron/runs", "canvas", "delivery-queue",
+        "media/browser", "media/inbound",
+        "skills", "extensions", "workspace",
+        "feishu", "telegram", "openclaw-weixin"
+    ]
+    for d in dirs:
+        (instance_dir / d).mkdir(parents=True, exist_ok=True)
+
+    for skill_id in skills:
+        src = PRESETS_DIR / "skills" / skill_id
+        dst = instance_dir / "skills" / skill_id
+        if src.exists():
+            shutil.copytree(src, dst, dirs_exist_ok=True)
+
+    plugin_id_to_folder = {
+        "openclaw-weixin": "weixin"
+    }
+
+    for plugin_id in plugins:
+        folder_name = plugin_id_to_folder.get(plugin_id, plugin_id)
+        src = PRESETS_DIR / "extensions" / folder_name
+        dst = instance_dir / "extensions" / plugin_id
+        if src.exists():
+            shutil.copytree(src, dst, dirs_exist_ok=True)
+            for root, dirs, files in os.walk(dst):
+                for d in dirs:
+                    os.chmod(os.path.join(root, d), 0o755)
+                for f in files:
+                    os.chmod(os.path.join(root, f), 0o644)
 
     if identity and identity != "empty":
         identity_src = PRESETS_DIR / "identities" / identity
-        identity_dst = presets_dir / "identities" / identity
         if identity_src.exists():
-            shutil.copytree(identity_src, identity_dst, dirs_exist_ok=True)
+            for f in identity_src.iterdir():
+                if f.is_file():
+                    shutil.copy2(f, instance_dir / "workspace" / f.name)
 
-    for skill_id in skills:
-        skill_src = PRESETS_DIR / "skills" / skill_id
-        skill_dst = presets_dir / "skills" / skill_id
-        if skill_src.exists():
-            shutil.copytree(skill_src, skill_dst, dirs_exist_ok=True)
+    identity_dir = instance_dir / "identity"
+    (identity_dir / "device.json").write_text(json.dumps({
+        "deviceId": f"device-{instance_name}",
+        "instanceName": instance_name
+    }, indent=2))
+
+    devices_dir = instance_dir / "devices"
+    (devices_dir / "paired.json").write_text("[]")
+    (devices_dir / "pending.json").write_text("[]")
 
 
 @app.post("/api/instances")
@@ -455,12 +455,16 @@ async def create_instance(data: InstanceCreateRequest):
     copy_presets_to_instance(
         name,
         data.identity or "empty",
-        data.skills or []
+        data.skills or [],
+        data.plugins or []
     )
 
     import secrets
     token = secrets.token_hex(16)
-    
+
+    ip = get_next_ip()
+    http_port, app_port, data_port = get_next_ports()
+
     default_config = {
         "logging": {
             "level": "info"
@@ -492,6 +496,7 @@ async def create_instance(data: InstanceCreateRequest):
                 "model": {
                     "primary": "MiniMax-M2.7-highspeed"
                 },
+                "skills": [f"/app/configs/instance/skills/{s}" for s in (data.skills or [])],
                 "compaction": {
                     "mode": "safeguard"
                 },
@@ -511,11 +516,12 @@ async def create_instance(data: InstanceCreateRequest):
                 "dangerouslyDisableDeviceAuth": True,
                 "allowInsecureAuth": True,
                 "allowedOrigins": [
-                    "http://localhost:18789",
-                    "http://127.0.0.1:18789",
-                    "https://localhost:18443",
-                    "https://192.168.2.118:18443"
-                ]
+                    "*",
+                    f"http://localhost:{http_port}",
+                    f"http://127.0.0.1:{http_port}",
+                    f"http://192.168.2.118:{http_port}"
+                ],
+                "dangerouslyAllowHostHeaderOriginFallback": True
             },
             "auth": {
                 "mode": "token",
@@ -543,20 +549,26 @@ async def create_instance(data: InstanceCreateRequest):
         },
         "plugins": {
             "allow": [],
-            "entries": {}
+            "entries": {},
+            "load": {
+                "paths": ["/root/.openclaw/extensions"]
+            }
         }
     }
 
     if data.plugins:
-        default_config["plugins"]["entries"] = {}
+        default_config["plugins"]["allow"] = ["telegram", "feishu", "minimax", "memory-core"] + data.plugins
         for plugin_id in data.plugins:
-            plugin_path = f"/app/extensions/{plugin_id}"
-            default_config["plugins"]["entries"][plugin_id] = {
-                "path": plugin_path
+            if plugin_id not in default_config["plugins"]["entries"]:
+                default_config["plugins"]["entries"][plugin_id] = {}
+        if "openclaw-weixin" in data.plugins:
+            default_config["channels"]["openclaw-weixin"] = {
+                "enabled": True,
+                "allowFrom": ["*"]
             }
 
     if data.channels:
-        default_config["channels"] = data.channels
+        default_config["channels"].update(data.channels)
 
     (instance_dir / "openclaw.json").write_text(json.dumps(default_config, indent=2))
 
@@ -569,8 +581,6 @@ async def create_instance(data: InstanceCreateRequest):
     api_key_to_use = data.apiKey
 
     if instance_type == "compose":
-        ip = get_next_ip()
-        http_port, app_port, data_port = get_next_ports()
         volume_name = create_instance_volume(name)
         add_service_to_compose(name, image, ip, http_port, app_port, data_port, api_key=api_key_to_use, plugins=data.plugins or [])
         returncode, stdout, stderr = await run_docker_compose_async(
@@ -579,12 +589,9 @@ async def create_instance(data: InstanceCreateRequest):
         )
         if returncode != 0:
             return {"name": name, "status": "created_with_errors", "compose_error": stderr}
-        await sync_config_to_container_async(name, clear_first=False)
         await asyncio.to_thread(subprocess.run, ["docker", "restart", name], capture_output=True)
         return {"name": name, "status": "created", "image": image, "ip": ip, "ports": {"http": http_port, "app": app_port, "data": data_port}}
     else:
-        ip = get_next_ip()
-        http_port, app_port, data_port = get_next_ports()
         volume_name = create_instance_volume(name)
         try:
             container = CLIENT.containers.run(
